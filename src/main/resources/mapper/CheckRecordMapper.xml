@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.qcby.springboot_0525.mapper.CheckRecordMapper">
+
+    <resultMap id="BaseResultMap" type="com.qcby.springboot_0525.entity.CheckRecord">
+        <id column="id" property="id"/>
+        <result column="result_id" property="resultId"/>
+        <result column="check_type" property="checkType"/>
+        <result column="check_result" property="checkResult"/>
+        <result column="issue_description" property="issueDescription"/>
+        <result column="suggestion" property="suggestion"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM check_record WHERE id = #{id}
+    </select>
+
+    <select id="selectByResultId" resultMap="BaseResultMap">
+        SELECT * FROM check_record WHERE result_id = #{resultId} ORDER BY create_time DESC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO check_record (result_id, check_type, check_result, issue_description, suggestion)
+        VALUES (#{resultId}, #{checkType}, #{checkResult}, #{issueDescription}, #{suggestion})
+    </insert>
+
+    <delete id="deleteByResultId">
+        DELETE FROM check_record WHERE result_id = #{resultId}
+    </delete>
+
+</mapper>

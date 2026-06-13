@@ -1,0 +1,37 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow: hidden; /* 防止body滚动 */
+}
+
+/* 优化表格显示 */
+.el-table {
+  font-size: 13px;
+}
+
+.el-table .el-table__cell {
+  padding: 8px 0;
+}
+
+/* 优化卡片间距 */
+.el-card {
+  border-radius: 4px;
+}
+
+/* 优化按钮大小 */
+.el-button--small {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+/* 优化标签大小 */
+.el-tag--small {
+  font-size: 11px;
+  padding: 0 8px;
+}
+

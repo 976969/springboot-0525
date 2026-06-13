@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.qcby.springboot_0525.mapper.StudentMapper">
+
+    <resultMap id="BaseResultMap" type="com.qcby.springboot_0525.entity.Student">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="password" property="password"/>
+        <result column="real_name" property="realName"/>
+        <result column="avatar" property="avatar"/>
+        <result column="email" property="email"/>
+        <result column="phone" property="phone"/>
+        <result column="student_no" property="studentNo"/>
+        <result column="class_name" property="className"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, username, password, real_name, avatar, email, phone, student_no, class_name, status, create_time, update_time
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM student WHERE id = #{id}
+    </select>
+
+    <select id="selectByUsername" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM student WHERE username = #{username}
+    </select>
+
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM student ORDER BY create_time DESC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO student (username, password, real_name, avatar, email, phone, student_no, class_name, status)
+        VALUES (#{username}, #{password}, #{realName}, #{avatar}, #{email}, #{phone}, #{studentNo}, #{className}, #{status})
+    </insert>
+
+    <update id="updateById">
+        UPDATE student
+        <set>
+            <if test="username != null">username = #{username},</if>
+            <if test="password != null">password = #{password},</if>
+            <if test="realName != null">real_name = #{realName},</if>
+            <if test="avatar != null">avatar = #{avatar},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="studentNo != null">student_no = #{studentNo},</if>
+            <if test="className != null">class_name = #{className},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM student WHERE id = #{id}
+    </delete>
+
+</mapper>

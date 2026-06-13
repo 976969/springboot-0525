@@ -1,0 +1,161 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import axios from 'axios'
+
+const routes = [
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/Login.vue'),
+    meta: { title: '登录' }
+  },
+  {
+    path: '/',
+    component: () => import('../layout/MainLayout.vue'),
+    redirect: '/login',  // 修改: 默认跳转到登录页
+    children: [
+      {
+        path: 'home',
+        name: 'Home',
+        component: () => import('../views/Home.vue'),
+        meta: { title: '首页' }
+      },
+      {
+        path: 'profile',
+        name: 'Profile',
+        component: () => import('../views/Profile.vue'),
+        meta: { title: '个人中心' }
+      },
+      {
+        path: 'user-manage',
+        name: 'UserManage',
+        component: () => import('../views/UserManage.vue'),
+        meta: { title: '用户管理', roles: ['admin'] }
+      },
+      {
+        path: 'my-courses',
+        name: 'MyCourses',
+        component: () => import('../views/MyCourses.vue'),
+        meta: { title: '我的课程', roles: ['student'] }
+      },
+      {
+        path: 'my-scores',
+        name: 'MyScores',
+        component: () => import('../views/MyScores.vue'),
+        meta: { title: '我的成绩', roles: ['student'] }
+      },
+      {
+        path: 'course',
+        name: 'Course',
+        component: () => import('../views/Course.vue'),
+        meta: { title: '课程管理', roles: ['admin', 'teacher'] }
+      },
+      {
+        path: 'task',
+        name: 'Task',
+        component: () => import('../views/Task.vue'),
+        meta: { title: '实训任务', roles: ['admin', 'teacher'] }
+      },
+      {
+        path: 'upload',
+        name: 'Upload',
+        component: () => import('../views/Upload.vue'),
+        meta: { title: '成果上传', roles: ['student'] }
+      },
+      {
+        path: 'check',
+        name: 'Check',
+        component: () => import('../views/Check.vue'),
+        meta: { title: '智能核查', roles: ['admin', 'teacher'] }
+      },
+      {
+        path: 'evaluate',
+        name: 'Evaluate',
+        component: () => import('../views/Evaluate.vue'),
+        meta: { title: '评价管理', roles: ['admin', 'teacher'] }
+      },
+      {
+        path: 'report',
+        name: 'Report',
+        component: () => import('../views/Report.vue'),
+        meta: { title: '报表中心', roles: ['admin', 'teacher'] }
+      },
+      {
+        path: 'indicator',
+        name: 'Indicator',
+        component: () => import('../views/Indicator.vue'),
+        meta: { title: '评价指标', roles: ['admin', 'teacher'] }
+      }
+    ]
+  }
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+})
+
+// 路由守卫 - 未登录或 token 失效时跳转登录页
+let tokenChecked = false  // 标记本次会话是否已验证过 token
+
+router.beforeEach(async (to, from, next) => {
+  document.title = to.meta.title || '智能实训评价系统'
+  const token = localStorage.getItem('token')
+  
+  // 访问根路径时的处理
+  if (to.path === '/') {
+    if (token) {
+      // 有token,跳转到首页
+      next('/home')
+    } else {
+      // 没有token,跳转到登录页
+      next('/login')
+    }
+    return
+  }
+  
+  // 没有 token 且不是访问登录页，跳转登录页
+  if (!token && to.path !== '/login') {
+    tokenChecked = false
+    next('/login')
+    return
+  }
+  
+  // 已有 token，访问登录页则跳转首页
+  if (token && to.path === '/login') {
+    next('/home')
+    return
+  }
+  
+  // 首次进入页面时，向后端验证 token 是否有效
+  if (!tokenChecked && token && to.path !== '/login') {
+    try {
+      await axios.get('/api/auth/info', {
+        headers: { Authorization: token }
+      })
+      tokenChecked = true  // token 有效，后续不再重复验证
+    } catch (e) {
+      // token 已失效（后端重启、Session 过期等），清除本地数据
+      localStorage.removeItem('token')
+      localStorage.removeItem('userInfo')
+      tokenChecked = false
+      next('/login')
+      return
+    }
+  }
+  
+  // 角色权限校验
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+  const userRole = userInfo.role
+  
+  if (to.meta.roles && to.meta.roles.length > 0) {
+    if (!userRole || !to.meta.roles.includes(userRole)) {
+      // 无权限访问，跳转到首页
+      next('/home')
+      return
+    }
+  }
+  
+  next()
+})
+
+export default router
