@@ -12,47 +12,53 @@
         <result column="create_time" property="createTime"/>
         <result column="student_name" property="studentName"/>
         <result column="task_title" property="taskTitle"/>
+        <result column="file_name" property="fileName"/>
     </resultMap>
 
     <select id="selectById" resultMap="BaseResultMap">
-        SELECT rp.*, u.real_name AS student_name, t.title AS task_title
+        SELECT rp.*, u.real_name AS student_name, t.title AS task_title, r.file_name
         FROM evaluation_report rp
         LEFT JOIN student u ON rp.student_id = u.id
         LEFT JOIN training_task t ON rp.task_id = t.id
+        LEFT JOIN training_result r ON rp.task_id = r.task_id AND rp.student_id = r.student_id
         WHERE rp.id = #{id}
     </select>
 
     <select id="selectList" resultMap="BaseResultMap">
-        SELECT rp.*, u.real_name AS student_name, t.title AS task_title
+        SELECT rp.*, u.real_name AS student_name, t.title AS task_title, r.file_name
         FROM evaluation_report rp
         LEFT JOIN student u ON rp.student_id = u.id
         LEFT JOIN training_task t ON rp.task_id = t.id
+        LEFT JOIN training_result r ON rp.task_id = r.task_id AND rp.student_id = r.student_id
         ORDER BY rp.create_time DESC
     </select>
 
     <select id="selectByTaskId" resultMap="BaseResultMap">
-        SELECT rp.*, u.real_name AS student_name, t.title AS task_title
+        SELECT rp.*, u.real_name AS student_name, t.title AS task_title, r.file_name
         FROM evaluation_report rp
         LEFT JOIN student u ON rp.student_id = u.id
         LEFT JOIN training_task t ON rp.task_id = t.id
+        LEFT JOIN training_result r ON rp.task_id = r.task_id AND rp.student_id = r.student_id
         WHERE rp.task_id = #{taskId}
         ORDER BY rp.create_time DESC
     </select>
 
     <select id="selectByTaskAndStudent" resultMap="BaseResultMap">
-        SELECT rp.*, u.real_name AS student_name, t.title AS task_title
+        SELECT rp.*, u.real_name AS student_name, t.title AS task_title, r.file_name
         FROM evaluation_report rp
         LEFT JOIN student u ON rp.student_id = u.id
         LEFT JOIN training_task t ON rp.task_id = t.id
+        LEFT JOIN training_result r ON rp.task_id = r.task_id AND rp.student_id = r.student_id
         WHERE rp.task_id = #{taskId} AND rp.student_id = #{studentId}
         ORDER BY rp.create_time DESC
     </select>
 
     <select id="selectByTeacherId" resultMap="BaseResultMap">
-        SELECT rp.*, u.real_name AS student_name, t.title AS task_title
+        SELECT rp.*, u.real_name AS student_name, t.title AS task_title, r.file_name
         FROM evaluation_report rp
         LEFT JOIN student u ON rp.student_id = u.id
         LEFT JOIN training_task t ON rp.task_id = t.id
+        LEFT JOIN training_result r ON rp.task_id = r.task_id AND rp.student_id = r.student_id
         LEFT JOIN course c ON t.course_id = c.id
         WHERE c.teacher_id = #{teacherId}
         ORDER BY rp.create_time DESC

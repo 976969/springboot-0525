@@ -1,3 +1,6 @@
+<!--
+  评价管理页面（AI评分、教师评分、权重计算、评分记录）
+-->
 <template>
   <div>
     <!-- 评价操作区 -->
@@ -5,14 +8,74 @@
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center">
           <span>AI自动评分</span>
-          <el-button type="primary" @click="showEvaluateDialog = true" :disabled="evaluating">开始评分</el-button>
+          <el-alert title="点击操作栏的'AI评分'按钮可对该成果进行AI自动评分，评分后教师可修改分数" type="info" :closable="false" style="width: auto; margin: 0" />
         </div>
       </template>
       
-      <el-alert title="选择实训成果进行AI自动评分，评分后教师可修改分数" type="info" :closable="false" style="margin-bottom: 15px" />
+      <!-- 筛选条件 -->
+      <div style="margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center">
+        <el-input 
+          v-model="searchText" 
+          placeholder="输入文件名关键词搜索" 
+          clearable 
+          style="width: 250px"
+          @keyup.enter="loadResults"
+          @clear="loadResults"
+          @input="debounceSearch"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        <el-select 
+          v-model="filterStudent" 
+          placeholder="选择学生" 
+          clearable 
+          style="width: 150px"
+          @change="loadResults"
+        >
+          <el-option 
+            v-for="student in studentList" 
+            :key="student.id" 
+            :label="student.realName" 
+            :value="student.id" 
+          />
+        </el-select>
+        <el-select 
+          v-model="filterTask" 
+          placeholder="选择实训任务" 
+          clearable 
+          style="width: 200px"
+          @change="loadResults"
+        >
+          <el-option 
+            v-for="task in taskList" 
+            :key="task.id" 
+            :label="task.title" 
+            :value="task.id" 
+          />
+        </el-select>
+        <el-select 
+          v-model="filterStatus" 
+          placeholder="选择状态" 
+          clearable 
+          style="width: 120px"
+          @change="loadResults"
+        >
+          <el-option label="待处理" :value="0" />
+          <el-option label="已核查" :value="1" />
+          <el-option label="已评价" :value="2" />
+        </el-select>
+        <el-button type="primary" @click="resetFilter">重置筛选</el-button>
+        <div style="flex-grow: 1"></div>
+        <el-button type="warning" @click="openIndicatorChart">查看评分标准</el-button>
+      </div>
       
       <!-- 成果列表，显示提交人信息 -->
       <el-table :data="resultList" border stripe v-loading="loadingResults">
+        <!-- 序号列 -->
+        <el-table-column type="index" label="序号" width="60" align="center" :index="(i) => (resultPageNum - 1) * resultPageSize + i + 1" />
+        
         <el-table-column prop="fileName" label="文件名" min-width="150" show-overflow-tooltip />
         <el-table-column prop="studentName" label="提交人" width="90" />
         <el-table-column prop="taskTitle" label="实训任务" min-width="140" show-overflow-tooltip />
@@ -23,10 +86,20 @@
             <el-tag v-else-if="row.status === 2" type="success" size="small">已评价</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="提交时间" width="160" />
-        <el-table-column label="操作" width="100" align="center">
+        <el-table-column prop="createTime" label="提交时间" width="160" sortable />
+        <el-table-column label="操作" width="260" align="center">
           <template #default="{ row }">
-            <el-button size="small" type="primary" @click="viewContent(row)">查看</el-button>
+            <el-button size="small" type="info" @click="viewContent(row)">预览</el-button>
+            <el-button size="small" @click="downloadSourceFile(row)">下载源文件</el-button>
+            <el-button 
+              size="small" 
+              type="success" 
+              @click="runEvaluateDirect(row)" 
+              :loading="row.evaluating"
+              :disabled="row.evaluating"
+            >
+              AI评分
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -44,12 +117,20 @@
       />
     </el-card>
 
-    <!-- 评价记录区 -->
+    <!-- 教师评分区 -->
     <el-card style="margin-top: 20px">
-      <template #header>评价记录</template>
-      <el-table :data="groupedEvaluateList" border stripe v-loading="loading">
+      <template #header>
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <span>教师评分</span>
+          <el-alert title="教师未评分的成果始终排在最前，可点击列头按学生或时间排序" type="info" :closable="false" style="width: auto; margin: 0" />
+        </div>
+      </template>
+      <el-table :data="paginatedEvaluateList" border stripe v-loading="loading" @sort-change="handleSortChange">
+        <!-- 序号列 -->
+        <el-table-column type="index" label="序号" width="60" align="center" :index="(i) => (evaluatePageNum - 1) * evaluatePageSize + i + 1" />
+        
         <el-table-column prop="fileName" label="成果文件" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="studentName" label="提交人" width="90" />
+        <el-table-column prop="studentName" label="提交人" width="100" sortable="custom" />
         <el-table-column label="评价指标" min-width="180">
           <template #default="{ row }">
             <div style="display: flex; gap: 5px; flex-wrap: wrap">
@@ -64,9 +145,10 @@
             {{ row.avgAiScore ? row.avgAiScore.toFixed(1) : '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="教师评分" width="90" align="center">
+        <el-table-column label="教师评分" width="100" align="center">
           <template #default="{ row }">
-            {{ row.avgTeacherScore ? row.avgTeacherScore.toFixed(1) : '-' }}
+            <span v-if="row.avgTeacherScore">{{ row.avgTeacherScore.toFixed(1) }}</span>
+            <el-tag v-else type="danger" size="small">待评分</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="最终得分" width="90" align="center">
@@ -76,11 +158,31 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="evalTime" label="评价时间" width="160" />
-        <el-table-column label="操作" width="140" align="center">
+        <el-table-column prop="evalTime" label="评价时间" width="160" sortable="custom" />
+        <el-table-column label="评分比重" width="200" align="center">
           <template #default="{ row }">
-            <el-button size="small" type="primary" @click="viewEvaluateDetail(row)">查看详情</el-button>
-            <el-button size="small" @click="openTeacherScoreForGroup(row)">评分</el-button>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span style="font-size: 12px; color: #909399; min-width: 42px;">AI {{ row.scoreRatio ?? 5 }}</span>
+              <el-slider
+                v-model="row.scoreRatio"
+                :min="0"
+                :max="10"
+                :step="1"
+                :show-tooltip="false"
+                style="flex: 1;"
+                @change="handleRatioChange(row)"
+              />
+              <span style="font-size: 12px; color: #909399; min-width: 50px;">教师 {{ 10 - (row.scoreRatio ?? 5) }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="200" align="center">
+          <template #default="{ row }">
+            <div style="display: flex; gap: 6px; justify-content: center;">
+              <el-button size="small" type="primary" @click="viewEvaluateDetail(row)" style="margin-left: 0">查看详情</el-button>
+              <el-button size="small" @click="openTeacherScoreForGroup(row)" style="margin-left: 0">评分</el-button>
+              <el-button size="small" type="warning" @click="applyRatio(row)" style="margin-left: 0">应用</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -90,13 +192,13 @@
         v-model:current-page="evaluatePageNum"
         v-model:page-size="evaluatePageSize"
         :page-sizes="[5, 10, 20]"
-        :total="evaluateTotal"
+        :total="sortedEvaluateList.length"
         layout="total, sizes, prev, pager, next"
         style="margin-top: 20px; justify-content: flex-end"
         @size-change="loadEvaluations"
         @current-change="loadEvaluations"
       />
-      <el-empty v-if="groupedEvaluateList.length === 0" description="暂无评价记录" />
+      <el-empty v-if="sortedEvaluateList.length === 0" description="暂无评价记录" />
     </el-card>
     <!-- 评价详情对话框 -->
     <el-dialog v-model="showEvaluateDetailDialog" title="评价详情" width="1000px" top="5vh">
@@ -147,30 +249,6 @@
       </template>
     </el-dialog>
 
-    <!-- AI评分对话框 -->
-    <el-dialog v-model="showEvaluateDialog" title="AI自动评分" width="500px">
-      <el-alert title="选择成果进行AI自动评分，将对该成果的所有指标进行评分" type="info" :closable="false" style="margin-bottom: 15px" />
-      <el-form>
-        <el-form-item label="选择成果">
-          <el-select v-model="selectedResultId" placeholder="请选择要评价的成果" style="width: 100%">
-            <el-option 
-              v-for="item in resultList" 
-              :key="item.id" 
-              :label="`${item.fileName} - ${item.studentName || '未知'} - ${item.taskTitle || '未知'}`" 
-              :value="item.id" 
-            />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showEvaluateDialog = false" :disabled="evaluating">取消</el-button>
-        <el-button type="primary" @click="runAiEvaluate" :loading="evaluating" :disabled="evaluating">开始评分</el-button>
-        <div v-if="evaluating" style="text-align: center; margin-top: 10px; color: #409eff">
-          <el-icon class="is-loading" style="margin-right: 5px"><Loading /></el-icon>AI正在评分中，请稍候（逐指标评分，约需30-60秒）...
-        </div>
-      </template>
-    </el-dialog>
-
     <!-- 教师评分对话框 -->
     <el-dialog v-model="showTeacherScoreDialog" title="教师评分" width="600px">
       <el-form :model="teacherScoreForm" label-width="80px">
@@ -195,14 +273,46 @@
         <el-button type="primary" @click="submitTeacherScore" :loading="submitting">提交</el-button>
       </template>
     </el-dialog>
+
+    <!-- 评分标准弹框 -->
+    <el-dialog v-model="showIndicatorChart" title="评分标准 - 评价指标权重占比" width="650px">
+      <div ref="indicatorChartRef" style="width: 100%; height: 360px;"></div>
+      <div style="margin-top: 16px;">
+        <el-table :data="indicatorList" border stripe size="small">
+          <el-table-column prop="name" label="指标名称" />
+          <el-table-column prop="category" label="分类" width="100" />
+          <el-table-column label="权重" width="80" align="center">
+            <template #default="{ row }">
+              <el-tag size="small">{{ row.defaultWeight }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="占比" width="100" align="center">
+            <template #default="{ row }">
+              {{ getIndicatorPercent(row.defaultWeight) }}%
+            </template>
+          </el-table-column>
+          <el-table-column prop="isSystem" label="类型" width="80" align="center">
+            <template #default="{ row }">
+              <el-tag :type="row.isSystem === 1 ? 'danger' : 'success'" size="small">
+                {{ row.isSystem === 1 ? '系统' : '自定义' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <template #footer>
+        <el-button @click="showIndicatorChart = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed, nextTick, onBeforeUnmount } from 'vue'
 import request from '../utils/request'
-import { ElMessage } from 'element-plus'
-import { Loading } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Loading, Search } from '@element-plus/icons-vue'
+import * as echarts from 'echarts'
 
 const evaluateList = ref([])
 const groupedEvaluateList = ref([])
@@ -227,6 +337,98 @@ const resultTotal = ref(0)
 const evaluatePageNum = ref(1)
 const evaluatePageSize = ref(10)
 const evaluateTotal = ref(0)
+// 筛选条件
+const searchText = ref('')
+const filterStudent = ref('')
+const filterTask = ref('')
+const filterStatus = ref(null)
+const studentList = ref([])
+const taskList = ref([])
+
+// 评分标准弹框相关
+const showIndicatorChart = ref(false)
+const indicatorList = ref([])
+const indicatorChartRef = ref(null)
+let indicatorChartInstance = null
+
+const indicatorTotalWeight = computed(() => {
+  return indicatorList.value.reduce((sum, item) => sum + (Number(item.defaultWeight) || 0), 0)
+})
+
+const getIndicatorPercent = (weight) => {
+  const tw = indicatorTotalWeight.value
+  if (!tw || tw === 0) return 0
+  return Math.round((Number(weight) / tw) * 100)
+}
+
+const renderIndicatorChart = () => {
+  if (!indicatorChartRef.value) return
+  if (indicatorChartInstance) indicatorChartInstance.dispose()
+  indicatorChartInstance = echarts.init(indicatorChartRef.value)
+  const data = indicatorList.value.map(item => ({
+    name: item.name,
+    value: Number(item.defaultWeight) || 0
+  }))
+  indicatorChartInstance.setOption({
+    tooltip: {
+      trigger: 'item',
+      formatter: (params) => {
+        const pct = ((params.value / indicatorTotalWeight.value) * 100).toFixed(1)
+        return `${params.name}<br/>权重: ${params.value} | 占比: ${pct}%`
+      }
+    },
+    legend: { orient: 'vertical', right: '5%', top: 'center', itemGap: 12 },
+    color: ['#409eff', '#67c23a', '#e6a23c', '#f56c6c', '#909399', '#9b59b6', '#1abc9c', '#3498db'],
+    series: [{
+      type: 'pie',
+      radius: ['35%', '65%'],
+      center: ['40%', '50%'],
+      avoidLabelOverlap: true,
+      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+      label: {
+        show: true,
+        formatter: (params) => {
+          const pct = ((params.value / indicatorTotalWeight.value) * 100).toFixed(1)
+          return `${params.name}\n${pct}%`
+        },
+        fontSize: 13,
+        lineHeight: 18
+      },
+      emphasis: {
+        label: { show: true, fontSize: 15, fontWeight: 'bold' },
+        itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.3)' }
+      },
+      data: data
+    }]
+  })
+}
+
+const openIndicatorChart = async () => {
+  try {
+    const res = await request.get('/indicator/list')
+    indicatorList.value = res.data || []
+    showIndicatorChart.value = true
+    await nextTick()
+    renderIndicatorChart()
+  } catch (e) {
+    console.error('加载指标失败:', e)
+    ElMessage.error('加载评分标准失败')
+  }
+}
+
+onBeforeUnmount(() => {
+  indicatorChartInstance?.dispose()
+})
+
+// 防抖搜索(输入时自动触发,延迟500ms)
+let searchTimer = null
+const debounceSearch = () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    resultPageNum.value = 1  // 搜索时重置到第1页
+    loadResults()
+  }, 500)
+}
 
 // 查看评价详情
 const viewEvaluateDetail = (row) => {
@@ -261,13 +463,27 @@ const viewContent = async (row) => {
   }
 }
 
-// 下载文件
+// 下载文件（弹框内用）
 const downloadFile = () => {
   if (!currentResult.value.filePath) return
   const link = document.createElement('a')
   link.href = '/' + currentResult.value.filePath
   link.download = currentResult.value.fileName || 'download'
   link.click()
+}
+
+// 下载学生提交的源文件（表格操作栏用）
+const downloadSourceFile = (row) => {
+  if (!row.filePath) {
+    ElMessage.warning('文件路径不存在')
+    return
+  }
+  const link = document.createElement('a')
+  link.href = '/' + row.filePath
+  link.download = row.fileName || 'download'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 const teacherScoreForm = reactive({
@@ -279,17 +495,25 @@ const teacherScoreForm = reactive({
   teacherComment: ''
 })
 
-// 加载成果列表
+// 加载实训成果列表
 const loadResults = async () => {
   loadingResults.value = true
   try {
     const res = await request.get('/result/page', {
       params: {
         pageNum: resultPageNum.value,
-        pageSize: resultPageSize.value
+        pageSize: resultPageSize.value,
+        studentId: filterStudent.value || undefined,
+        taskId: filterTask.value || undefined,
+        status: filterStatus.value !== null ? filterStatus.value : undefined,
+        fileName: searchText.value || undefined
       }
     })
-    resultList.value = res.data.list || []
+    // 为每行添加evaluating状态，并按状态排序：待处理(0) > 已核查(1) > 已评价(2)
+    resultList.value = (res.data.list || []).map(item => ({
+      ...item,
+      evaluating: false
+    })).sort((a, b) => (a.status ?? 99) - (b.status ?? 99))
     resultTotal.value = res.data.total || 0
   } catch (e) {
     console.error('加载成果列表失败:', e)
@@ -297,6 +521,92 @@ const loadResults = async () => {
     loadingResults.value = false
   }
 }
+
+// 加载学生列表
+const loadStudents = async () => {
+  try {
+    const res = await request.get('/user/student/list')
+    studentList.value = res.data || []
+  } catch (e) {
+    console.error('加载学生列表失败:', e)
+  }
+}
+
+// 加载实训任务列表
+const loadTasks = async () => {
+  try {
+    const res = await request.get('/task/page', {
+      params: {
+        pageNum: 1,
+        pageSize: 100
+      }
+    })
+    taskList.value = res.data.list || []
+  } catch (e) {
+    console.error('加载任务列表失败:', e)
+  }
+}
+
+// 重置筛选
+const resetFilter = () => {
+  searchText.value = ''
+  filterStudent.value = ''
+  filterTask.value = ''
+  filterStatus.value = null
+  resultPageNum.value = 1
+  loadResults()
+}
+
+// 排序状态：教师未评分始终在最前，其次按选中的列排序
+const sortField = ref('')
+const sortOrder = ref('')  // 'ascending' | 'descending' | ''
+
+// 处理表头排序变化
+const handleSortChange = ({ prop, order }) => {
+  sortField.value = prop || ''
+  sortOrder.value = order || ''
+}
+
+// 排序后的评价列表（教师未评分始终前置）
+const sortedEvaluateList = computed(() => {
+  const list = [...groupedEvaluateList.value]
+  list.sort((a, b) => {
+    // 第一优先级：教师未评分(avgTeacherScore为null)排在前面
+    const aUnscored = !a.avgTeacherScore
+    const bUnscored = !b.avgTeacherScore
+    if (aUnscored && !bUnscored) return -1
+    if (!aUnscored && bUnscored) return 1
+
+    // 第二优先级：按选中列排序
+    if (sortField.value && sortOrder.value) {
+      const asc = sortOrder.value === 'ascending'
+      let cmp = 0
+      if (sortField.value === 'studentName') {
+        const aName = a.studentName || ''
+        const bName = b.studentName || ''
+        cmp = aName.localeCompare(bName, 'zh-CN')
+      } else if (sortField.value === 'evalTime') {
+        const aTime = a.evalTime ? new Date(a.evalTime).getTime() : 0
+        const bTime = b.evalTime ? new Date(b.evalTime).getTime() : 0
+        cmp = aTime - bTime
+      }
+      return asc ? cmp : -cmp
+    }
+
+    // 默认：未评分组内按评价时间倒序，已评分组内按评价时间倒序
+    const aTime = a.evalTime ? new Date(a.evalTime).getTime() : 0
+    const bTime = b.evalTime ? new Date(b.evalTime).getTime() : 0
+    return bTime - aTime
+  })
+  return list
+})
+
+// 分页后的评价记录列表(计算属性)
+const paginatedEvaluateList = computed(() => {
+  const start = (evaluatePageNum.value - 1) * evaluatePageSize.value
+  const end = start + evaluatePageSize.value
+  return sortedEvaluateList.value.slice(start, end)
+})
 
 // 加载评价记录（按成果分组）
 const loadEvaluations = async () => {
@@ -322,6 +632,7 @@ const loadEvaluations = async () => {
           taskTitle: result.taskTitle,
           evalTime: records[0].createTime,
           records: records,
+          scoreRatio: records[0].scoreRatio != null ? Number(records[0].scoreRatio) : 5,
           avgAiScore: aiScores.length > 0 ? aiScores.reduce((a, b) => a + b, 0) / aiScores.length : null,
           avgTeacherScore: teacherScores.length > 0 ? teacherScores.reduce((a, b) => a + b, 0) / teacherScores.length : null,
           avgFinalScore: finalScores.length > 0 ? finalScores.reduce((a, b) => a + b, 0) / finalScores.length : null
@@ -331,7 +642,7 @@ const loadEvaluations = async () => {
       }
     }
     
-    groupedEvaluateList.value = groupedEvaluations.reverse()
+    groupedEvaluateList.value = groupedEvaluations
   } catch (e) {
     console.error('加载评价记录失败:', e)
   } finally {
@@ -364,6 +675,51 @@ const runAiEvaluate = async () => {
     ElMessage.error('评分失败：' + (e.response?.data?.msg || e.message))
   } finally {
     evaluating.value = false
+  }
+}
+
+// 直接评分当前行 (新方法)
+const runEvaluateDirect = async (row) => {
+  if (!row.id) {
+    ElMessage.warning('成果ID不存在')
+    return
+  }
+  
+  // 已评价时，弹出确认对话框
+  if (row.status === 2) {
+    try {
+      await ElMessageBox.confirm(
+        '该文件已评价，确定要再次核查或评分吗？这将覆盖之前的评价记录。',
+        '确认操作',
+        { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+      )
+    } catch {
+      return  // 用户取消
+    }
+  }
+  
+  // 设置当前行的评分状态为进行中
+  row.evaluating = true
+  
+  try {
+    ElMessage.info('正在进行AI自动评分，请稍候（约需10-30秒）...')
+    const res = await request.post(`/evaluate/ai/${row.id}`)
+    const data = res.data || {}
+    const failCount = data.failCount || 0
+    if (failCount > 0) {
+      ElMessage.warning(`AI评分完成，${data.successCount}个指标成功，${failCount}个指标失败`)
+    } else {
+      ElMessage.success('AI评分完成！')
+    }
+    
+    // 刷新列表和评价记录
+    await loadEvaluations()
+    await loadResults()
+  } catch (e) {
+    console.error('AI评分失败:', e)
+    ElMessage.error('评分失败：' + (e.response?.data?.msg || e.message))
+  } finally {
+    row.evaluating = false
   }
 }
 
@@ -405,8 +761,36 @@ const submitTeacherScore = async () => {
   }
 }
 
+// 比例滑块本地预览（不立即提交）
+const handleRatioChange = (row) => {
+  // 仅更新本地展示，等用户点“应用”按钮才提交
+  const aiW = row.scoreRatio ?? 5
+  const teacherW = 10 - (row.scoreRatio ?? 5)
+  // 实时预览最终得分
+  if (row.avgAiScore && row.avgTeacherScore) {
+    row.avgFinalScore = (row.avgAiScore * aiW + row.avgTeacherScore * teacherW) / 10
+  }
+}
+
+// 应用比例到后端
+const applyRatio = async (row) => {
+  try {
+    await request.put('/evaluate/score-ratio', {
+      resultId: row.resultId,
+      scoreRatio: row.scoreRatio != null ? Number(row.scoreRatio) : 5
+    })
+    ElMessage.success('评分比重已应用，最终得分已重算')
+    loadEvaluations()
+  } catch (e) {
+    console.error('应用比例失败:', e)
+    ElMessage.error('应用比例失败')
+  }
+}
+
 onMounted(() => {
   loadResults()
   loadEvaluations()
+  loadStudents()
+  loadTasks()
 })
 </script>

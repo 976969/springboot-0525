@@ -9,6 +9,7 @@
         <result column="ai_score" property="aiScore"/>
         <result column="teacher_score" property="teacherScore"/>
         <result column="final_score" property="finalScore"/>
+        <result column="score_ratio" property="scoreRatio"/>
         <result column="ai_comment" property="aiComment"/>
         <result column="teacher_comment" property="teacherComment"/>
         <result column="create_time" property="createTime"/>
@@ -39,8 +40,8 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO evaluation_record (result_id, indicator_id, ai_score, teacher_score, final_score, ai_comment, teacher_comment)
-        VALUES (#{resultId}, #{indicatorId}, #{aiScore}, #{teacherScore}, #{finalScore}, #{aiComment}, #{teacherComment})
+        INSERT INTO evaluation_record (result_id, indicator_id, ai_score, teacher_score, final_score, score_ratio, ai_comment, teacher_comment)
+        VALUES (#{resultId}, #{indicatorId}, #{aiScore}, #{teacherScore}, #{finalScore}, #{scoreRatio}, #{aiComment}, #{teacherComment})
     </insert>
 
     <update id="updateById">
@@ -49,10 +50,22 @@
             <if test="aiScore != null">ai_score = #{aiScore},</if>
             <if test="teacherScore != null">teacher_score = #{teacherScore},</if>
             <if test="finalScore != null">final_score = #{finalScore},</if>
+            <if test="scoreRatio != null">score_ratio = #{scoreRatio},</if>
             <if test="aiComment != null">ai_comment = #{aiComment},</if>
             <if test="teacherComment != null">teacher_comment = #{teacherComment},</if>
         </set>
         WHERE id = #{id}
+    </update>
+
+    <update id="updateScoreRatioByResultId">
+        UPDATE evaluation_record
+        SET score_ratio = #{scoreRatio},
+            final_score = CASE
+                WHEN teacher_score IS NOT NULL AND teacher_score > 0
+                THEN ROUND(ai_score * #{scoreRatio} / 10 + teacher_score * (10 - #{scoreRatio}) / 10, 2)
+                ELSE ai_score
+            END
+        WHERE result_id = #{resultId}
     </update>
 
     <delete id="deleteByResultId">

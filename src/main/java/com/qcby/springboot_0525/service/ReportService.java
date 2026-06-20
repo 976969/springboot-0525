@@ -15,6 +15,10 @@ import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 报告服务 - 生成和管理评价报告
@@ -82,7 +86,7 @@ public class ReportService {
     }
 
     /**
-     * 批量生成任务下所有学生的报告
+     * 批量生成任务下所有学生的报告（并行处理）
      * @param taskId 任务ID
      * @return 生成的报告数量
      */
@@ -91,18 +95,38 @@ public class ReportService {
         // 查询该任务下所有已提交的成果
         List<TrainingResult> results = resultMapper.selectByTaskId(taskId);
         
-        int successCount = 0;
-        for (TrainingResult result : results) {
-            try {
-                generateReport(result.getId());
-                successCount++;
-            } catch (Exception e) {
-                // 跳过生成失败的成果
-                System.err.println("生成报告失败 - 成果ID: " + result.getId() + ", 原因: " + e.getMessage());
-            }
+        if (results == null || results.isEmpty()) {
+            throw new BusinessException("该任务下暂无提交的成果");
         }
         
-        return successCount;
+        // 使用线程池并行处理（固定线程数为CPU核心数）
+        int threadCount = Math.min(results.size(), Runtime.getRuntime().availableProcessors());
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        
+        AtomicInteger successCount = new AtomicInteger(0);
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        
+        for (TrainingResult result : results) {
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                try {
+                    // 每个线程独立生成报告
+                    generateReport(result.getId());
+                    successCount.incrementAndGet();
+                } catch (Exception e) {
+                    System.err.println("生成报告失败 - 成果ID: " + result.getId() + ", 原因: " + e.getMessage());
+                }
+            }, executor);
+            
+            futures.add(future);
+        }
+        
+        // 等待所有任务完成
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        
+        // 关闭线程池
+        executor.shutdown();
+        
+        return successCount.get();
     }
 
     /**

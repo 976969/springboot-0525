@@ -10,16 +10,17 @@
         <result column="course_name" property="courseName"/>
         <result column="student_name" property="studentName"/>
         <result column="student_username" property="studentUsername"/>
+        <result column="class_name" property="className"/>
         <result column="teacher_name" property="teacherName"/>
     </resultMap>
 
     <select id="selectByCourseId" resultMap="BaseResultMap">
-        SELECT cs.*, c.name AS course_name, u.real_name AS student_name, u.username AS student_username
+        SELECT cs.*, c.name AS course_name, u.real_name AS student_name, u.username AS student_username, u.class_name AS class_name
         FROM course_student cs
         LEFT JOIN course c ON cs.course_id = c.id
         LEFT JOIN student u ON cs.student_id = u.id
         WHERE cs.course_id = #{courseId}
-        ORDER BY cs.create_time DESC
+        ORDER BY u.class_name, cs.create_time DESC
     </select>
 
     <select id="selectByStudentId" resultMap="BaseResultMap">

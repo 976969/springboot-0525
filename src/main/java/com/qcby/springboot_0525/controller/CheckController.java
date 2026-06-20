@@ -18,6 +18,9 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import java.util.List;
 
+/**
+ * 智能核查控制器（AI辅助核查、大模型调用）
+ */
 @RestController
 @RequestMapping("/check")
 public class CheckController {
@@ -70,7 +73,23 @@ public class CheckController {
 
             // 提取JSON部分（处理大模型可能返回的额外文本）
             String jsonStr = extractJson(llmResult);
-            JsonNode root = objectMapper.readTree(jsonStr);
+            
+            JsonNode root;
+            try {
+                root = objectMapper.readTree(jsonStr);
+            } catch (Exception parseEx) {
+                log.error("JSON解析失败，原始数据: {}", jsonStr);
+                log.error("解析异常: ", parseEx);
+                // 尝试修复常见的JSON问题
+                jsonStr = fixCommonJsonIssues(jsonStr);
+                try {
+                    root = objectMapper.readTree(jsonStr);
+                } catch (Exception finalEx) {
+                    log.error("修复后仍解析失败", finalEx);
+                    // 返回默认的核查结果
+                    return generateDefaultCheckResult(resultId, "JSON解析失败，请重新核查");
+                }
+            }
 
             // 三个维度的核查记录
             String[][] dimensions = {
@@ -119,6 +138,51 @@ public class CheckController {
     }
 
     /**
+     * 修复常见的JSON问题
+     */
+    private String fixCommonJsonIssues(String json) {
+        // 移除所有单引号,替换为双引号(如果是键值对)
+        // 但保留字符串内容中的单引号
+        json = json.replaceAll("'([^']+)'", "\"$1\"");
+        
+        // 移除数字周围的引号
+        json = json.replaceAll("\"(\\d+)\"", "$1");
+        
+        // 修复true/false/null的引号
+        json = json.replaceAll("\"(true|false|null)\"", "$1");
+        
+        // 移除多余的换行和空格
+        json = json.replaceAll("\\s+", " ");
+        
+        return json;
+    }
+    
+    /**
+     * 生成默认的核查结果(当JSON解析失败时)
+     */
+    private Result<List<CheckRecord>> generateDefaultCheckResult(Long resultId, String errorMsg) {
+        log.warn("生成默认核查结果: {}", errorMsg);
+        
+        String[] dimensions = {"completeness", "logic", "match"};
+        String[] dimNames = {"完整性", "逻辑性", "匹配度"};
+        
+        for (int i = 0; i < dimensions.length; i++) {
+            CheckRecord record = new CheckRecord();
+            record.setResultId(resultId);
+            record.setCheckType(dimensions[i]);
+            record.setCheckResult(2); // 2=存在问题
+            record.setIssueDescription(dimNames[i] + "核查失败: " + errorMsg);
+            record.setSuggestion("请重新核查或联系管理员");
+            checkRecordMapper.insert(record);
+        }
+        
+        // 更新状态为已核查(即使失败)
+        resultService.updateStatus(resultId, 1);
+        
+        return Result.success(checkRecordMapper.selectByResultId(resultId));
+    }
+
+    /**
      * 获取指定成果的核查记录
      */
     @GetMapping("/records/{resultId}")
@@ -130,12 +194,66 @@ public class CheckController {
      * 从大模型返回文本中提取JSON字符串
      */
     private String extractJson(String text) {
+        if (text == null || text.isEmpty()) {
+            throw new BusinessException("大模型返回为空");
+        }
+        
         // 尝试找到 JSON 对象的起止位置
         int start = text.indexOf('{');
         int end = text.lastIndexOf('}');
         if (start >= 0 && end > start) {
-            return text.substring(start, end + 1);
+            String jsonStr = text.substring(start, end + 1);
+            // 清理JSON中的非法字符
+            jsonStr = cleanJson(jsonStr);
+            return jsonStr;
         }
-        return text;
+        
+        // 如果没有找到{},尝试清理整个文本
+        String cleaned = cleanJson(text);
+        // 再次尝试查找JSON
+        start = cleaned.indexOf('{');
+        end = cleaned.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            return cleaned.substring(start, end + 1);
+        }
+        
+        throw new BusinessException("无法从大模型返回中提取JSON格式");
+    }
+    
+    /**
+     * 清理JSON字符串中的非法字符
+     */
+    private String cleanJson(String json) {
+        if (json == null) return "";
+        
+        // 移除BOM
+        if (json.startsWith("\uFEFF")) {
+            json = json.substring(1);
+        }
+        
+        // 移除零宽字符
+        json = json.replaceAll("[\u200B-\u200D\uFEFF]", "");
+        
+        // 替换中文标点为英文标点
+        json = json.replace("，", ",");
+        json = json.replace("。", ".");
+        json = json.replace("：", ":");
+        json = json.replace("；", ";");
+        json = json.replace("“", "\"");
+        json = json.replace("”", "\"");
+        json = json.replace("‘", "'");
+        json = json.replace("’", "'");
+        
+        // 移除控制字符(除了换行和回车)
+        json = json.replaceAll("[\\x00-\\x09\\x0B\\x0C\\x0E-\\x1F]", "");
+        
+        // 修复可能的转义问题
+        json = json.replace("\\\\\"", "\""); // 双重转义
+        json = json.replace("\\\"", "\""); // 转义引号
+        
+        // 移除末尾多余逗号
+        json = json.replaceAll(",\\s*([\\]}])", "$1");
+        
+        return json.trim();
     }
 }

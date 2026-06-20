@@ -1,15 +1,43 @@
+<!--
+  评价指标管理页面（指标CRUD、AI生成、权重重置、配比展示）
+-->
 <template>
   <el-card>
     <template #header>
       <div style="display: flex; justify-content: space-between; align-items: center">
         <span>评价指标管理</span>
-        <el-button type="primary" @click="openAdd">新增指标</el-button>
+        <div style="display: flex; gap: 10px;">
+          <el-button type="warning" @click="handleResetWeights">重置权重</el-button>
+          <el-button type="primary" @click="openAdd">新增指标</el-button>
+        </div>
       </div>
     </template>
     <el-table :data="tableData" border stripe v-loading="loading">
+      <!-- 序号列 -->
+      <el-table-column type="index" label="序号" width="60" align="center" :index="(i) => (pageNum - 1) * pageSize + i + 1" />
+      
       <el-table-column prop="name" label="指标名称" />
       <el-table-column prop="category" label="分类" width="120" />
-      <el-table-column prop="defaultWeight" label="默认权重(%)" width="120" />
+      <el-table-column label="权重" width="100" align="center">
+        <template #default="{ row }">
+          <el-tag size="small">{{ row.defaultWeight }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="实际占比" width="200" align="center">
+        <template #default="{ row }">
+          <div style="display: flex; align-items: center; gap: 6px; width: 100%;">
+            <el-progress 
+              :percentage="getWeightPercent(row.defaultWeight)" 
+              :stroke-width="16" 
+              :color="getWeightColor(row.defaultWeight)"
+              style="flex: 1;"
+            />
+            <span style="font-size: 13px; font-weight: bold; color: #303133; min-width: 40px; text-align: right;">
+              {{ getWeightPercent(row.defaultWeight) }}%
+            </span>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column prop="description" label="描述" show-overflow-tooltip />
       <el-table-column prop="isSystem" label="类型" width="80">
         <template #default="{ row }">
@@ -37,6 +65,58 @@
       @size-change="loadIndicators"
       @current-change="loadIndicators"
     />
+    
+    <!-- 权重汇总 -->
+    <div style="margin-top: 20px; padding: 12px 16px; background: #f5f7fa; border-radius: 6px; display: flex; align-items: center; gap: 12px;">
+      <el-tag type="info" effect="dark">
+        权重总和: {{ totalWeight }}
+      </el-tag>
+      <span style="color: #606266; font-size: 13px;">
+        实际占比 = 各指标权重 ÷ {{ totalWeight }}，系统自动归一化计算总分
+      </span>
+    </div>
+
+    <!-- AI智能生成 -->
+    <el-card style="margin-top: 20px;" shadow="never">
+      <template #header>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-weight: bold;">AI 智能生成指标</span>
+          <el-tag type="danger" size="small" effect="plain">AI</el-tag>
+        </div>
+      </template>
+      <p style="margin: 0 0 12px; color: #909399; font-size: 13px;">
+        描述您的评分需求，AI 将自动调整指标权重并新增合适的评价维度。系统指标会保留，仅调整权重。
+      </p>
+      <el-input
+        v-model="aiRequirements"
+        type="textarea"
+        :rows="4"
+        placeholder="例如：这门课侧重实践操作，代码质量占大头，文档简单即可；另外需要增加一个团队协作的指标，PPT展示也要考核"
+        style="margin-bottom: 12px;"
+      />
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <el-button type="primary" @click="handleAiGenerate" :loading="aiLoading">
+          {{ aiLoading ? 'AI 生成中...' : 'AI 生成指标配置' }}
+        </el-button>
+        <span v-if="aiLoading" style="color: #e6a23c; font-size: 13px;">AI 正在分析，请稍候（约10-30秒）...</span>
+      </div>
+
+      <!-- AI 生成结果 -->
+      <div v-if="aiResult" style="margin-top: 16px; padding: 14px; background: #f0f9eb; border-radius: 6px; border: 1px solid #e1f3d8;">
+        <div style="font-weight: bold; margin-bottom: 8px; color: #67c23a;">AI 建议</div>
+        <p style="margin: 0 0 10px; color: #606266; font-size: 14px;">{{ aiResult.suggestion }}</p>
+        <div style="font-weight: bold; margin-bottom: 8px; color: #409eff;">操作记录</div>
+        <ul style="margin: 0; padding-left: 20px; color: #606266; font-size: 13px;">
+          <li v-for="(action, idx) in aiResult.actions" :key="idx">{{ action }}</li>
+        </ul>
+      </div>
+    </el-card>
+
+    <!-- 权重配比饼图 -->
+    <div style="margin-top: 20px;">
+      <div style="font-size: 15px; font-weight: bold; margin-bottom: 12px; color: #303133;">权重配比图</div>
+      <div ref="chartRef" style="width: 100%; height: 360px;"></div>
+    </div>
   </el-card>
   <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑评价指标' : '新增评价指标'" width="500px">
     <el-form :model="form" label-width="80px">
@@ -46,8 +126,14 @@
       <el-form-item label="分类" required>
         <el-input v-model="form.category" placeholder="如：技术能力" />
       </el-form-item>
-      <el-form-item label="权重(%)" required>
-        <el-input-number v-model="form.defaultWeight" :min="1" :max="100" />
+      <el-form-item label="权重" required>
+        <el-input-number v-model="form.defaultWeight" :min="0" :max="100" />
+      </el-form-item>
+      <el-form-item label="类型" required>
+        <el-select v-model="form.isSystem" placeholder="选择类型">
+          <el-option label="系统指标" :value="1" />
+          <el-option label="自定义" :value="0" />
+        </el-select>
       </el-form-item>
       <el-form-item label="描述">
         <el-input v-model="form.description" type="textarea" :rows="3" placeholder="指标说明" />
@@ -61,9 +147,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import request from '../utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import * as echarts from 'echarts'
 
 const dialogVisible = ref(false)
 const isEdit = ref(false)
@@ -73,12 +160,90 @@ const submitting = ref(false)
 const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const chartRef = ref(null)
+let chartInstance = null
+
+// AI 相关
+const aiRequirements = ref('')
+const aiLoading = ref(false)
+const aiResult = ref(null)
+
+// 计算权重配比
+const totalWeight = computed(() => {
+  return tableData.value.reduce((sum, item) => sum + (Number(item.defaultWeight) || 0), 0)
+})
+
+const getWeightPercent = (weight) => {
+  const tw = totalWeight.value
+  if (!tw || tw === 0) return 0
+  return Math.round((Number(weight) / tw) * 100)
+}
+
+const getWeightColor = (weight) => {
+  const percent = getWeightPercent(weight)
+  if (percent >= 30) return '#409eff'
+  if (percent >= 20) return '#67c23a'
+  if (percent >= 10) return '#e6a23c'
+  return '#909399'
+}
+
+// 饼图渲染
+const renderChart = () => {
+  if (!chartRef.value) return
+  if (chartInstance) chartInstance.dispose()
+  chartInstance = echarts.init(chartRef.value)
+  
+  const data = tableData.value.map(item => ({
+    name: item.name,
+    value: Number(item.defaultWeight) || 0
+  }))
+  
+  chartInstance.setOption({
+    tooltip: {
+      trigger: 'item',
+      formatter: (params) => {
+        const pct = ((params.value / totalWeight.value) * 100).toFixed(1)
+        return `${params.name}<br/>权重: ${params.value} | 占比: ${pct}%`
+      }
+    },
+    legend: { orient: 'vertical', right: '5%', top: 'center', itemGap: 12 },
+    color: ['#409eff', '#67c23a', '#e6a23c', '#f56c6c', '#909399', '#9b59b6', '#1abc9c', '#3498db'],
+    series: [{
+      type: 'pie',
+      radius: ['35%', '65%'],
+      center: ['40%', '50%'],
+      avoidLabelOverlap: true,
+      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+      label: {
+        show: true,
+        formatter: (params) => {
+          const pct = ((params.value / totalWeight.value) * 100).toFixed(1)
+          return `${params.name}\n${pct}%`
+        },
+        fontSize: 13,
+        lineHeight: 18
+      },
+      emphasis: {
+        label: { show: true, fontSize: 15, fontWeight: 'bold' },
+        itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.3)' }
+      },
+      data: data
+    }]
+  })
+}
+
+window.addEventListener('resize', () => chartInstance?.resize())
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', () => chartInstance?.resize())
+  chartInstance?.dispose()
+})
 
 const defaultForm = {
   id: null,
   name: '',
   category: '',
   defaultWeight: 20,
+  isSystem: 0,
   description: ''
 }
 const form = reactive({ ...defaultForm })
@@ -95,6 +260,8 @@ const loadIndicators = async () => {
     })
     tableData.value = res.data.list || []
     total.value = res.data.total || 0
+    await nextTick()
+    renderChart()
   } catch (e) {
     console.error('加载评价指标失败:', e)
   } finally {
@@ -139,6 +306,47 @@ const handleSubmit = async () => {
     ElMessage.error('操作失败')
   } finally {
     submitting.value = false
+  }
+}
+
+// 重置权重
+const handleResetWeights = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '重置后：系统指标恢复原始权重，自定义指标权重归零。是否继续？',
+      '重置权重确认',
+      { type: 'warning' }
+    )
+    await request.post('/indicator/reset')
+    ElMessage.success('权重已重置：系统指标恢复原始值，自定义指标已归零')
+    loadIndicators()
+  } catch (e) {
+    if (e !== 'cancel') console.error('重置失败:', e)
+  }
+}
+
+// AI智能生成指标
+const handleAiGenerate = async () => {
+  if (!aiRequirements.value.trim()) {
+    ElMessage.warning('请输入您的评分需求')
+    return
+  }
+  aiLoading.value = true
+  aiResult.value = null
+  try {
+    const res = await request.post('/indicator/ai-generate', {
+      requirements: aiRequirements.value
+    }, {
+      timeout: 180000
+    })
+    aiResult.value = res.data
+    ElMessage.success('AI 指标配置生成完成')
+    loadIndicators()
+  } catch (e) {
+    console.error('AI生成失败:', e)
+    ElMessage.error('AI生成失败，请稍后重试')
+  } finally {
+    aiLoading.value = false
   }
 }
 

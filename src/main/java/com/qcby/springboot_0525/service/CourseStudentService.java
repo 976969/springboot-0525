@@ -8,29 +8,26 @@ import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import java.util.List;
 
+/**
+ * 课程学生关联业务逻辑层
+ */
 @Service
 public class CourseStudentService {
 
     @Resource
     private CourseStudentMapper courseStudentMapper;
 
-    /**
-     * 获取课程下的学生列表
-     */
+    /** 查询课程下的学生列表 */
     public List<CourseStudent> getStudentsByCourseId(Long courseId) {
         return courseStudentMapper.selectByCourseId(courseId);
     }
 
-    /**
-     * 获取学生选修的课程列表
-     */
+    /** 查询学生选修的课程列表 */
     public List<CourseStudent> getCoursesByStudentId(Long studentId) {
         return courseStudentMapper.selectByStudentId(studentId);
     }
 
-    /**
-     * 添加学生到课程
-     */
+    /** 添加学生到课程（校验重复选课） */
     public void addStudentToCourse(Long courseId, Long studentId) {
         // 检查是否已存在
         List<CourseStudent> existing = courseStudentMapper.selectByCourseId(courseId);
@@ -45,13 +42,12 @@ public class CourseStudentService {
         courseStudentMapper.insert(cs);
     }
 
-    /**
-     * 从课程移除学生
-     */
+    /** 从课程移除学生 */
     public void removeStudentFromCourse(Long courseId, Long studentId) {
         courseStudentMapper.deleteByCourseAndStudent(courseId, studentId);
     }
 
+    /** 根据ID删除选课记录 */
     public void deleteById(Long id) {
         courseStudentMapper.deleteById(id);
     }

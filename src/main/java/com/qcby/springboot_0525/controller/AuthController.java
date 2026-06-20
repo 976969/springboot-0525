@@ -7,6 +7,9 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import java.util.Map;
 
+/**
+ * 认证控制器（登录、登出、用户信息）
+ */
 @RestController
 @RequestMapping("/auth")
 public class AuthController {

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.qcby.springboot_0525.mapper.ClassScheduleMapper">
+
+    <resultMap id="BaseResultMap" type="com.qcby.springboot_0525.entity.ClassSchedule">
+        <id column="id" property="id"/>
+        <result column="course_id" property="courseId"/>
+        <result column="teacher_id" property="teacherId"/>
+        <result column="day_of_week" property="dayOfWeek"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="location" property="location"/>
+        <result column="remark" property="remark"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="course_name" property="courseName"/>
+        <result column="teacher_name" property="teacherName"/>
+    </resultMap>
+
+    <select id="selectByTeacherId" resultMap="BaseResultMap">
+        SELECT s.*, c.name AS course_name, t.real_name AS teacher_name
+        FROM class_schedule s
+        LEFT JOIN course c ON s.course_id = c.id
+        LEFT JOIN teacher t ON s.teacher_id = t.id
+        WHERE s.teacher_id = #{teacherId}
+        ORDER BY s.day_of_week, s.start_time
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT s.*, c.name AS course_name, t.real_name AS teacher_name
+        FROM class_schedule s
+        LEFT JOIN course c ON s.course_id = c.id
+        LEFT JOIN teacher t ON s.teacher_id = t.id
+        ORDER BY s.day_of_week, s.start_time
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT s.*, c.name AS course_name, t.real_name AS teacher_name
+        FROM class_schedule s
+        LEFT JOIN course c ON s.course_id = c.id
+        LEFT JOIN teacher t ON s.teacher_id = t.id
+        WHERE s.id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO class_schedule (course_id, teacher_id, day_of_week, start_time, end_time, location, remark)
+        VALUES (#{courseId}, #{teacherId}, #{dayOfWeek}, #{startTime}, #{endTime}, #{location}, #{remark})
+    </insert>
+
+    <update id="updateById">
+        UPDATE class_schedule
+        <set>
+            <if test="courseId != null">course_id = #{courseId},</if>
+            <if test="dayOfWeek != null">day_of_week = #{dayOfWeek},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="location != null">location = #{location},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM class_schedule WHERE id = #{id}
+    </delete>
+
+</mapper>

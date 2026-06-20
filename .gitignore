@@ -48,12 +48,11 @@ src/main/resources/application-*.yml
 
 ### 上传文件 ###
 uploads/
+uploadsresult/
 
 ### 项目文档(内部资料) ###
 介绍/
-
-### SQL测试数据 ###
-sql/test_data.sql
+*.md
 
 ### 操作系统 ###
 .DS_Store

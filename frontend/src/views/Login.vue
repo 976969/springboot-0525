@@ -1,3 +1,6 @@
+<!--
+  登录页面（角色选择、表单验证、路由跳转）
+-->
 <template>
   <div class="login-container">
     <el-card class="login-card">
@@ -57,7 +60,13 @@ const handleLogin = async () => {
     userStore.setToken(res.data.token)
     userStore.setUserInfo(res.data.user)
     ElMessage.success('登录成功')
-    router.push('/home')
+    
+    // 根据角色跳转到对应首页
+    if (loginForm.role === 'teacher') {
+      router.push('/teacher-home')
+    } else {
+      router.push('/home')
+    }
   } catch (e) {
     // 错误已在拦截器中处理
   } finally {

@@ -1,3 +1,6 @@
+/**
+ * 用户状态管理（Token、用户信息、登录登出）
+ */
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 

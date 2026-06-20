@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import java.util.List;
 
+/**
+ * 课程控制器（课程管理、权限过滤）
+ */
 @RestController
 @RequestMapping("/course")
 public class CourseController {
@@ -45,7 +48,17 @@ public class CourseController {
 
     @GetMapping("/list")
     public Result<List<Course>> listAll() {
-        return Result.success(courseService.list());
+        String role = (String) StpUtil.getSession().get("role");
+        Object realIdObj = StpUtil.getSession().get("realId");
+        
+        List<Course> list;
+        if ("teacher".equals(role) && realIdObj != null) {
+            Long teacherId = Long.valueOf(realIdObj.toString());
+            list = courseService.listByTeacherId(teacherId);
+        } else {
+            list = courseService.list();
+        }
+        return Result.success(list);
     }
 
     @GetMapping("/{id}")
@@ -55,6 +68,19 @@ public class CourseController {
 
     @PostMapping
     public Result<Void> add(@RequestBody Course course) {
+        // 获取当前登录用户的角色和ID
+        String role = (String) StpUtil.getSession().get("role");
+        Object realIdObj = StpUtil.getSession().get("realId");
+        
+        // 如果是教师角色,自动设置teacherId
+        if ("teacher".equals(role) && realIdObj != null) {
+            Long teacherId = Long.valueOf(realIdObj.toString());
+            course.setTeacherId(teacherId);
+        }
+        
+        // 如果前端传了teacherId(管理员角色),直接使用
+        // 如果都没传,这里会报错(但前端应该做校验)
+        
         courseService.add(course);
         return Result.success();
     }

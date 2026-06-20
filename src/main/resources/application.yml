@@ -42,10 +42,10 @@ sa-token:
 
 # 文件上传存储路径
 file:
-  upload-path: ${UPLOAD_PATH:./uploads}
+  upload-path: ${UPLOAD_PATH:./uploads/}
 
-# 大模型API配置
+# 大模型API配置(硅基流动 - 免费)
 llm:
-  api-url: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
-  api-key: ${LLM_API_KEY:your-api-key-here}
-  model: qwen-plus
+  api-url: https://api.siliconflow.cn/v1/chat/completions
+  api-key: sk-oxggnbkwkzzkcjdlldxnuvxrwxztozghgiapdtxmtssezzeq
+  model: Qwen/Qwen2.5-14B-Instruct

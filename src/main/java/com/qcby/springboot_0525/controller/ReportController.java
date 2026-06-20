@@ -1,9 +1,8 @@
 package com.qcby.springboot_0525.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.stp.StpUtil;
-import com.github.pagehelper.PageHelper;
-import com.github.pagehelper.PageInfo;
 import com.qcby.springboot_0525.common.BusinessException;
 import com.qcby.springboot_0525.common.PageResult;
 import com.qcby.springboot_0525.common.Result;
@@ -22,7 +21,11 @@ import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+/**
+ * 报表中心控制器（报告生成、Excel/PDF导出）
+ */
 @RestController
 @RequestMapping("/report")
 public class ReportController {
@@ -41,6 +44,18 @@ public class ReportController {
 
     @Resource
     private PdfUtil pdfUtil;
+
+    /**
+     * 获取单个报告详情(含reportData)
+     */
+    @GetMapping("/{id}")
+    public Result<EvaluationReport> getReportDetail(@PathVariable Long id) {
+        EvaluationReport report = reportMapper.selectById(id);
+        if (report == null) {
+            throw new BusinessException("报告不存在");
+        }
+        return Result.success(report);
+    }
 
     /**
      * 生成单个学生的评价报告
@@ -67,6 +82,7 @@ public class ReportController {
     /**
      * 导出Excel格式评价报告
      */
+    @SaCheckLogin
     @GetMapping("/export/excel/{reportId}")
     public void exportExcel(@PathVariable Long reportId, HttpServletResponse response) {
         EvaluationReport report = reportMapper.selectById(reportId);
@@ -91,6 +107,7 @@ public class ReportController {
     /**
      * 导出PDF格式评价报告
      */
+    @SaCheckLogin
     @GetMapping("/export/pdf/{reportId}")
     public void exportPdf(@PathVariable Long reportId, HttpServletResponse response) {
         EvaluationReport report = reportMapper.selectById(reportId);
@@ -118,8 +135,9 @@ public class ReportController {
     @GetMapping("/page")
     public Result<PageResult<EvaluationReport>> list(
             @RequestParam(defaultValue = "1") int pageNum,
-            @RequestParam(defaultValue = "10") int pageSize) {
-        PageHelper.startPage(pageNum, pageSize);
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) Long studentId,
+            @RequestParam(required = false) Long taskId) {
         
         // 根据角色过滤数据
         String role = (String) StpUtil.getSession().get("role");
@@ -127,16 +145,33 @@ public class ReportController {
         
         List<EvaluationReport> list;
         if ("teacher".equals(role) && realIdObj != null) {
-            // 教师只能看到自己课程相关的报告
             Long teacherId = Long.valueOf(realIdObj.toString());
             list = reportMapper.selectByTeacherId(teacherId);
         } else {
-            // 管理员看到所有报告
             list = reportMapper.selectList();
         }
         
-        PageInfo<EvaluationReport> pageInfo = new PageInfo<>(list);
-        return Result.success(PageResult.of(pageInfo.getList(), pageInfo.getTotal(), pageNum, pageSize));
+        // 应用筛选条件
+        if (studentId != null) {
+            list = list.stream().filter(r -> r.getStudentId().equals(studentId)).collect(Collectors.toList());
+        }
+        if (taskId != null) {
+            list = list.stream().filter(r -> r.getTaskId().equals(taskId)).collect(Collectors.toList());
+        }
+        
+        // 手动分页
+        int total = list.size();
+        int fromIndex = (pageNum - 1) * pageSize;
+        int toIndex = Math.min(fromIndex + pageSize, total);
+        
+        List<EvaluationReport> pageList;
+        if (fromIndex >= total) {
+            pageList = new java.util.ArrayList<>();
+        } else {
+            pageList = list.subList(fromIndex, toIndex);
+        }
+        
+        return Result.success(PageResult.of(pageList, total, pageNum, pageSize));
     }
 
     /**

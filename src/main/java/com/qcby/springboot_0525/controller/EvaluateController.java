@@ -27,6 +27,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 评价管理控制器（AI评分、教师评分、权重计算）
+ */
 @RestController
 @RequestMapping("/evaluate")
 public class EvaluateController {
@@ -64,7 +67,17 @@ public class EvaluateController {
         }
 
         TrainingTask task = taskService.getById(result.getTaskId());
-        List<EvaluationIndicator> indicators = indicatorService.list();
+
+        // 按当前登录角色获取指标：教师只用自己的指标，管理员用全部
+        String role = (String) StpUtil.getSession().get("role");
+        Object realIdObj = StpUtil.getSession().get("realId");
+        List<EvaluationIndicator> indicators;
+        if ("teacher".equals(role) && realIdObj != null) {
+            Long teacherId = Long.valueOf(realIdObj.toString());
+            indicators = indicatorService.listByTeacherId(teacherId);
+        } else {
+            indicators = indicatorService.list();
+        }
 
         String requirements = task.getRequirements() != null ? task.getRequirements() : task.getDescription();
         String content = result.getParsedContent();
@@ -106,6 +119,7 @@ public class EvaluateController {
                 record.setAiScore(aiScore);
                 record.setAiComment(aiComment);
                 record.setFinalScore(aiScore); // 默认最终得分=AI评分
+                record.setScoreRatio(new BigDecimal(5)); // 默认5:5比例
                 recordMapper.insert(record);
                 successCount++;
             } catch (Exception e) {
@@ -145,6 +159,22 @@ public class EvaluateController {
     }
 
     /**
+     * 批量更新评分比例 - 对指定成果的所有记录更新比例并重算finalScore
+     */
+    @PutMapping("/score-ratio")
+    public Result<List<EvaluationRecord>> updateScoreRatio(@RequestBody Map<String, Object> params) {
+        Long resultId = Long.valueOf(params.get("resultId").toString());
+        BigDecimal scoreRatio = new BigDecimal(params.get("scoreRatio").toString());
+
+        if (scoreRatio.compareTo(BigDecimal.ZERO) < 0 || scoreRatio.compareTo(new BigDecimal(10)) > 0) {
+            throw new BusinessException("评分比例范围为0-10");
+        }
+
+        recordMapper.updateScoreRatioByResultId(resultId, scoreRatio);
+        return Result.success(recordMapper.selectByResultId(resultId));
+    }
+
+    /**
      * 获取指定成果的评价记录
      */
     @GetMapping("/records/{resultId}")
@@ -168,7 +198,13 @@ public class EvaluateController {
 
         record.setTeacherScore(teacherScore);
         record.setTeacherComment(teacherComment);
-        record.setFinalScore(teacherScore); // 教师评分覆盖最终得分
+        // 按scoreRatio计算finalScore
+        BigDecimal ratio = record.getScoreRatio() != null ? record.getScoreRatio() : new BigDecimal(5);
+        BigDecimal aiScore = record.getAiScore() != null ? record.getAiScore() : BigDecimal.ZERO;
+        BigDecimal calculatedFinal = aiScore.multiply(ratio)
+                .add(teacherScore.multiply(new BigDecimal(10).subtract(ratio)))
+                .divide(new BigDecimal(10), 2, RoundingMode.HALF_UP);
+        record.setFinalScore(calculatedFinal);
         recordMapper.updateById(record);
 
         return Result.success();
@@ -186,20 +222,28 @@ public class EvaluateController {
             throw new BusinessException("暂无评价数据，请先进行评价");
         }
 
-        // 计算加权总分
-        BigDecimal totalScore = BigDecimal.ZERO;
+        // 计算加权总分（归一化：不依赖权重和=100）
+        BigDecimal weightedSum = BigDecimal.ZERO;
         BigDecimal totalWeight = BigDecimal.ZERO;
         StringBuilder evalData = new StringBuilder();
 
         for (EvaluationRecord record : records) {
             BigDecimal weight = record.getIndicatorWeight() != null ? record.getIndicatorWeight() : BigDecimal.ONE;
             BigDecimal score = record.getFinalScore() != null ? record.getFinalScore() : BigDecimal.ZERO;
-            // 加权: score * weight / 100
-            totalScore = totalScore.add(score.multiply(weight).divide(new BigDecimal(100), 2, RoundingMode.HALF_UP));
+            // 累加: score × weight
+            weightedSum = weightedSum.add(score.multiply(weight));
             totalWeight = totalWeight.add(weight);
             evalData.append(record.getIndicatorName()).append(": ")
-                    .append(score).append("分 (权重").append(weight).append("%) - ")
+                    .append(score).append("分 (权重").append(weight).append(") - ")
                     .append(record.getAiComment()).append("\n");
+        }
+
+        // 归一化: 总分 = Σ(score × weight) / Σ(weight)
+        BigDecimal totalScore;
+        if (totalWeight.compareTo(BigDecimal.ZERO) > 0) {
+            totalScore = weightedSum.divide(totalWeight, 2, RoundingMode.HALF_UP);
+        } else {
+            totalScore = BigDecimal.ZERO;
         }
 
         // 生成报告总结

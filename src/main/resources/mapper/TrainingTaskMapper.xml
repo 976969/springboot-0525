@@ -27,6 +27,13 @@
         ORDER BY t.create_time DESC
     </select>
 
+    <select id="selectActiveList" resultMap="BaseResultMap">
+        SELECT t.*, c.name AS course_name
+        FROM training_task t LEFT JOIN course c ON t.course_id = c.id
+        WHERE (t.deadline IS NULL OR t.deadline >= NOW()) AND t.status = 1
+        ORDER BY t.create_time DESC
+    </select>
+
     <select id="selectByCourseId" resultMap="BaseResultMap">
         SELECT t.*, c.name AS course_name
         FROM training_task t LEFT JOIN course c ON t.course_id = c.id

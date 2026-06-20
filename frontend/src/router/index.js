@@ -1,3 +1,6 @@
+/**
+ * Vue Router路由配置（角色权限控制、动态布局、守卫拦截）
+ */
 import { createRouter, createWebHistory } from 'vue-router'
 import axios from 'axios'
 
@@ -8,16 +11,23 @@ const routes = [
     component: () => import('../views/Login.vue'),
     meta: { title: '登录' }
   },
+  // 管理员专用路由(侧边栏布局)
   {
     path: '/',
     component: () => import('../layout/MainLayout.vue'),
-    redirect: '/login',  // 修改: 默认跳转到登录页
+    redirect: '/login',
     children: [
       {
         path: 'home',
         name: 'Home',
         component: () => import('../views/Home.vue'),
-        meta: { title: '首页' }
+        meta: { title: '首页', roles: ['student', 'admin'] }
+      },
+      {
+        path: 'teacher-home',
+        name: 'TeacherHome',
+        component: () => import('../views/TeacherHome.vue'),
+        meta: { title: '首页', roles: ['teacher'] }
       },
       {
         path: 'profile',
@@ -84,6 +94,12 @@ const routes = [
         name: 'Indicator',
         component: () => import('../views/Indicator.vue'),
         meta: { title: '评价指标', roles: ['admin', 'teacher'] }
+      },
+      {
+        path: 'banner-manage',
+        name: 'BannerManage',
+        component: () => import('../views/BannerManage.vue'),
+        meta: { title: '大屏管理', roles: ['admin'] }
       }
     ]
   }
@@ -100,12 +116,18 @@ let tokenChecked = false  // 标记本次会话是否已验证过 token
 router.beforeEach(async (to, from, next) => {
   document.title = to.meta.title || '智能实训评价系统'
   const token = localStorage.getItem('token')
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+  const userRole = userInfo.role
   
   // 访问根路径时的处理
   if (to.path === '/') {
     if (token) {
-      // 有token,跳转到首页
-      next('/home')
+      // 有token,根据角色跳转到对应首页
+      if (userRole === 'teacher') {
+        next('/teacher-home')
+      } else {
+        next('/home')
+      }
     } else {
       // 没有token,跳转到登录页
       next('/login')
@@ -122,7 +144,11 @@ router.beforeEach(async (to, from, next) => {
   
   // 已有 token，访问登录页则跳转首页
   if (token && to.path === '/login') {
-    next('/home')
+    if (userRole === 'teacher') {
+      next('/teacher-home')
+    } else {
+      next('/home')
+    }
     return
   }
   
@@ -144,13 +170,34 @@ router.beforeEach(async (to, from, next) => {
   }
   
   // 角色权限校验
-  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-  const userRole = userInfo.role
-  
   if (to.meta.roles && to.meta.roles.length > 0) {
     if (!userRole || !to.meta.roles.includes(userRole)) {
-      // 无权限访问，跳转到首页
-      next('/home')
+      // 无权限访问,跳转到对应首页(防止循环跳转)
+      if (userRole === 'teacher') {
+        // 教师不能访问学生页面,跳转到教师首页
+        if (to.path !== '/teacher-home') {
+          next('/teacher-home')
+        } else {
+          next() // 已经在教师首页,允许访问
+        }
+      } else if (userRole === 'student') {
+        // 学生不能访问教师页面,跳转到学生首页
+        if (to.path !== '/home') {
+          next('/home')
+        } else {
+          next() // 已经在学生首页,允许访问
+        }
+      } else if (userRole === 'admin') {
+        // 管理员默认跳转到首页
+        if (to.path !== '/home') {
+          next('/home')
+        } else {
+          next()
+        }
+      } else {
+        // 未知角色,跳转到登录页
+        next('/login')
+      }
       return
     }
   }

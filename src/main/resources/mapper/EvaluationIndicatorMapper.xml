@@ -5,9 +5,11 @@
     <resultMap id="BaseResultMap" type="com.qcby.springboot_0525.entity.EvaluationIndicator">
         <id column="id" property="id"/>
         <result column="name" property="name"/>
+        <result column="teacher_id" property="teacherId"/>
         <result column="description" property="description"/>
         <result column="category" property="category"/>
         <result column="default_weight" property="defaultWeight"/>
+        <result column="original_weight" property="originalWeight"/>
         <result column="is_system" property="isSystem"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
@@ -18,12 +20,24 @@
     </select>
 
     <select id="selectList" resultMap="BaseResultMap">
-        SELECT * FROM evaluation_indicator ORDER BY create_time DESC
+        SELECT * FROM evaluation_indicator ORDER BY is_system DESC, create_time ASC
+    </select>
+
+    <select id="selectByTeacherId" resultMap="BaseResultMap">
+        SELECT * FROM evaluation_indicator 
+        WHERE teacher_id = #{teacherId} 
+        ORDER BY is_system DESC, create_time ASC
+    </select>
+
+    <select id="selectSystemTemplate" resultMap="BaseResultMap">
+        SELECT * FROM evaluation_indicator 
+        WHERE teacher_id = 0 
+        ORDER BY is_system DESC, create_time ASC
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO evaluation_indicator (name, description, category, default_weight, is_system)
-        VALUES (#{name}, #{description}, #{category}, #{defaultWeight}, #{isSystem})
+        INSERT INTO evaluation_indicator (name, teacher_id, description, category, default_weight, original_weight, is_system)
+        VALUES (#{name}, #{teacherId}, #{description}, #{category}, #{defaultWeight}, #{originalWeight}, #{isSystem})
     </insert>
 
     <update id="updateById">
@@ -33,8 +47,18 @@
             <if test="description != null">description = #{description},</if>
             <if test="category != null">category = #{category},</if>
             <if test="defaultWeight != null">default_weight = #{defaultWeight},</if>
+            <if test="originalWeight != null">original_weight = #{originalWeight},</if>
+            <if test="isSystem != null">is_system = #{isSystem},</if>
         </set>
         WHERE id = #{id}
+    </update>
+
+    <update id="resetWeights">
+        UPDATE evaluation_indicator
+        SET default_weight = CASE
+            WHEN is_system = 1 THEN original_weight
+            ELSE 0
+        END
     </update>
 
     <delete id="deleteById">

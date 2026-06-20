@@ -1,17 +1,77 @@
+<!--
+  智能核查页面（AI辅助核查、核查记录、大模型调用）
+-->
 <template>
   <div>
     <el-card>
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center">
           <span>智能核查</span>
-          <el-button type="primary" @click="showRunDialog = true" :disabled="checking">开始核查</el-button>
+          <el-alert title="点击操作栏的'核查'按钮可对该成果进行AI智能核查" type="info" :closable="false" style="width: auto; margin: 0" />
         </div>
       </template>
       
-      <!-- 选择成果进行核查 -->
-      <el-alert title="请先选择要核查的实训成果" type="info" :closable="false" style="margin-bottom: 15px" />
+      <!-- 筛选条件 -->
+      <div style="margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap">
+        <el-input 
+          v-model="searchText" 
+          placeholder="输入文件名关键词搜索" 
+          clearable 
+          style="width: 250px"
+          @keyup.enter="loadResults"
+          @clear="loadResults"
+          @input="debounceSearch"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        <el-select 
+          v-model="filterStudent" 
+          placeholder="选择学生" 
+          clearable 
+          style="width: 150px"
+          @change="loadResults"
+        >
+          <el-option 
+            v-for="student in studentList" 
+            :key="student.id" 
+            :label="student.realName" 
+            :value="student.id" 
+          />
+        </el-select>
+        <el-select 
+          v-model="filterTask" 
+          placeholder="选择实训任务" 
+          clearable 
+          style="width: 200px"
+          @change="loadResults"
+        >
+          <el-option 
+            v-for="task in taskList" 
+            :key="task.id" 
+            :label="task.title" 
+            :value="task.id" 
+          />
+        </el-select>
+        <el-select 
+          v-model="filterStatus" 
+          placeholder="选择状态" 
+          clearable 
+          style="width: 120px"
+          @change="loadResults"
+        >
+          <el-option label="待处理" :value="0" />
+          <el-option label="已核查" :value="1" />
+          <el-option label="已评价" :value="2" />
+        </el-select>
+        <el-button type="primary" @click="resetFilter">重置筛选</el-button>
+      </div>
       
       <el-table :data="resultList" border stripe v-loading="loadingResults">
+        <!-- 序号列 -->
+        <el-table-column type="index" label="序号" width="60" align="center" :index="(i) => (resultPageNum - 1) * resultPageSize + i + 1" />
+        
         <el-table-column prop="fileName" label="文件名" min-width="150" show-overflow-tooltip />
         <el-table-column prop="studentName" label="提交人" width="90" />
         <el-table-column prop="taskTitle" label="实训任务" min-width="140" show-overflow-tooltip />
@@ -22,10 +82,19 @@
             <el-tag v-else-if="row.status === 2" type="success" size="small">已评价</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="提交时间" width="160" />
-        <el-table-column label="操作" width="100" align="center">
+        <el-table-column prop="createTime" label="提交时间" width="160" sortable />
+        <el-table-column label="操作" width="180" align="center">
           <template #default="{ row }">
-            <el-button size="small" type="primary" @click="viewContent(row)">查看</el-button>
+            <el-button size="small" type="info" @click="viewContent(row)">查看</el-button>
+            <el-button 
+              size="small" 
+              type="success" 
+              @click="runCheckDirect(row)" 
+              :loading="row.checking"
+              :disabled="row.checking"
+            >
+              核查
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -65,7 +134,10 @@
 
     <el-card style="margin-top: 20px">
       <template #header>核查记录</template>
-      <el-table :data="groupedCheckList" border stripe v-loading="loading">
+      <el-table :data="paginatedCheckList" border stripe v-loading="loading">
+        <!-- 序号列 -->
+        <el-table-column type="index" label="序号" width="60" align="center" :index="(i) => (checkPageNum - 1) * checkPageSize + i + 1" />
+        
         <el-table-column prop="fileName" label="成果文件" min-width="150" show-overflow-tooltip />
         <el-table-column prop="studentName" label="提交人" width="90" />
         <el-table-column label="核查类型" width="180" align="center">
@@ -103,7 +175,7 @@
         v-model:current-page="checkPageNum"
         v-model:page-size="checkPageSize"
         :page-sizes="[5, 10, 20]"
-        :total="checkTotal"
+        :total="groupedCheckList.length"
         layout="total, sizes, prev, pager, next"
         style="margin-top: 20px; justify-content: flex-end"
         @size-change="loadChecks"
@@ -197,38 +269,14 @@
         <el-button @click="showCheckDetailDialog = false">关闭</el-button>
       </template>
     </el-dialog>
-
-    <!-- 开始核查对话框 -->
-    <el-dialog v-model="showRunDialog" title="开始智能核查" width="500px">
-      <el-alert title="选择已上传的实训成果进行AI智能核查" type="info" :closable="false" style="margin-bottom: 15px" />
-      <el-form>
-        <el-form-item label="选择成果">
-          <el-select v-model="selectedResultId" placeholder="请选择要核查的成果" style="width: 100%">
-            <el-option 
-              v-for="item in resultList" 
-              :key="item.id" 
-              :label="`${item.fileName} - ${item.studentName || '未知'} - ${item.taskTitle || '未知'}`" 
-              :value="item.id" 
-            />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showRunDialog = false" :disabled="checking">取消</el-button>
-        <el-button type="primary" @click="runCheck" :loading="checking" :disabled="checking">开始核查</el-button>
-        <div v-if="checking" style="text-align: center; margin-top: 10px; color: #409eff">
-          <el-icon class="is-loading" style="margin-right: 5px"><Loading /></el-icon>AI正在分析中，请稍候（约需10-30秒）...
-        </div>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import request from '../utils/request'
 import { ElMessage } from 'element-plus'
-import { Loading } from '@element-plus/icons-vue'
+import { Loading, Search } from '@element-plus/icons-vue'
 
 const checkList = ref([])
 const groupedCheckList = ref([])
@@ -251,6 +299,23 @@ const resultTotal = ref(0)
 const checkPageNum = ref(1)
 const checkPageSize = ref(10)
 const checkTotal = ref(0)
+// 筛选条件
+const searchText = ref('')
+const filterStudent = ref('')
+const filterTask = ref('')
+const filterStatus = ref(null)
+const studentList = ref([])
+const taskList = ref([])
+
+// 防抖搜索(输入时自动触发,延迟500ms)
+let searchTimer = null
+const debounceSearch = () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    resultPageNum.value = 1  // 搜索时重置到第1页
+    loadResults()
+  }, 500)
+}
 
 // 查看核查详情
 const viewCheckDetail = (row) => {
@@ -286,10 +351,17 @@ const loadResults = async () => {
     const res = await request.get('/result/page', {
       params: {
         pageNum: resultPageNum.value,
-        pageSize: resultPageSize.value
+        pageSize: resultPageSize.value,
+        studentId: filterStudent.value || undefined,
+        taskId: filterTask.value || undefined,
+        status: filterStatus.value !== null ? filterStatus.value : undefined,
+        fileName: searchText.value || undefined
       }
     })
-    resultList.value = res.data.list || []
+    resultList.value = (res.data.list || []).map(item => ({
+      ...item,
+      checking: false // 为每行添加核查状态
+    }))
     resultTotal.value = res.data.total || 0
   } catch (e) {
     console.error('加载成果列表失败:', e)
@@ -297,6 +369,48 @@ const loadResults = async () => {
     loadingResults.value = false
   }
 }
+
+// 加载学生列表
+const loadStudents = async () => {
+  try {
+    const res = await request.get('/user/student/list')
+    studentList.value = res.data || []
+  } catch (e) {
+    console.error('加载学生列表失败:', e)
+  }
+}
+
+// 加载实训任务列表
+const loadTasks = async () => {
+  try {
+    const res = await request.get('/task/page', {
+      params: {
+        pageNum: 1,
+        pageSize: 100
+      }
+    })
+    taskList.value = res.data.list || []
+  } catch (e) {
+    console.error('加载任务列表失败:', e)
+  }
+}
+
+// 重置筛选
+const resetFilter = () => {
+  searchText.value = ''
+  filterStudent.value = ''
+  filterTask.value = ''
+  filterStatus.value = null
+  resultPageNum.value = 1
+  loadResults()
+}
+
+// 分页后的核查记录列表(计算属性)
+const paginatedCheckList = computed(() => {
+  const start = (checkPageNum.value - 1) * checkPageSize.value
+  const end = start + checkPageSize.value
+  return groupedCheckList.value.slice(start, end)
+})
 
 // 加载核查记录（按成果分组）
 const loadChecks = async () => {
@@ -353,7 +467,7 @@ const loadChecks = async () => {
   }
 }
 
-// 执行智能核查
+// 执行智能核查 (旧方法,保留兼容)
 const runCheck = async () => {
   if (!selectedResultId.value) {
     ElMessage.warning('请选择要核查的成果')
@@ -375,8 +489,36 @@ const runCheck = async () => {
   }
 }
 
+// 直接核查当前行 (新方法)
+const runCheckDirect = async (row) => {
+  if (!row.id) {
+    ElMessage.warning('成果ID不存在')
+    return
+  }
+  
+  // 设置当前行的核查状态为进行中
+  row.checking = true
+  
+  try {
+    ElMessage.info('正在进行AI智能核查，请稍候（约需10-30秒）...')
+    const res = await request.post(`/check/run/${row.id}`)
+    ElMessage.success('AI核查完成！')
+    
+    // 刷新列表和核查记录
+    await loadChecks()
+    await loadResults()
+  } catch (e) {
+    console.error('核查失败:', e)
+    ElMessage.error('核查失败：' + (e.response?.data?.msg || e.message))
+  } finally {
+    row.checking = false
+  }
+}
+
 onMounted(() => {
   loadResults()
   loadChecks()
+  loadStudents()
+  loadTasks()
 })
 </script>

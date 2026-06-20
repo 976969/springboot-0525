@@ -16,9 +16,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        String basePath = uploadPath.endsWith("/") || uploadPath.endsWith("\\")
+                ? uploadPath : uploadPath + "/";
         // 将上传文件的磁盘路径映射为URL访问路径
-        // 前端通过 /result/xxx 访问实际文件 {upload-path}/result/xxx
         registry.addResourceHandler("/result/**")
-                .addResourceLocations("file:" + uploadPath + "result/");
+                .addResourceLocations("file:" + basePath + "result/");
+        // banner图片访问映射（用/banner-image/避免与BannerController的/{id}冲突）
+        registry.addResourceHandler("/banner-image/**")
+                .addResourceLocations("file:" + basePath + "banner/");
     }
 }

@@ -139,4 +139,19 @@ public class LlmService {
         String userPrompt = "评价数据：\n" + evaluationData;
         return chat(systemPrompt, userPrompt);
     }
+
+    /**
+     * AI智能生成评价指标配置
+     * 根据教师的教学要求，自动生成或调整评价指标及权重
+     */
+    public String generateIndicators(String teacherRequirements, String existingIndicators) throws IOException {
+        String systemPrompt = "你是一位智能教学设计助手。请根据老师的要求和现有指标，生成评价指标配置方案。\n" +
+                "规则：保留所有系统指标（isSystem=1），可调权重不删；根据需求新增自定义指标（isSystem=0）；权重0-100，总和接近100。\n" +
+                "你必须只返回一行纯JSON，不要加任何其他文字、解释或markdown标记。格式如下：\n" +
+                "{\"indicators\": [{\"name\":\"xx\",\"description\":\"xx\",\"category\":\"xx\",\"weight\":30,\"isSystem\":1}],\"suggestion\":\"xx\"}";
+
+        String userPrompt = "要求：" + teacherRequirements +
+                "\n现有指标：" + existingIndicators;
+        return chat(systemPrompt, userPrompt);
+    }
 }

@@ -8,12 +8,18 @@ import lombok.Data;
 @Data
 public class Result<T> {
 
+    /** 响应状态码 */
     private int code;
+    /** 响应消息 */
     private String message;
+    /** 响应数据 */
     private T data;
 
     private Result() {}
 
+    /**
+     * 成功响应（无数据）
+     */
     public static <T> Result<T> success() {
         Result<T> result = new Result<>();
         result.setCode(200);
@@ -21,6 +27,9 @@ public class Result<T> {
         return result;
     }
 
+    /**
+     * 成功响应（带数据）
+     */
     public static <T> Result<T> success(T data) {
         Result<T> result = new Result<>();
         result.setCode(200);
@@ -29,6 +38,9 @@ public class Result<T> {
         return result;
     }
 
+    /**
+     * 成功响应（带消息和数据）
+     */
     public static <T> Result<T> success(String message, T data) {
         Result<T> result = new Result<>();
         result.setCode(200);
@@ -37,6 +49,9 @@ public class Result<T> {
         return result;
     }
 
+    /**
+     * 失败响应（默认500）
+     */
     public static <T> Result<T> fail(String message) {
         Result<T> result = new Result<>();
         result.setCode(500);
@@ -44,6 +59,9 @@ public class Result<T> {
         return result;
     }
 
+    /**
+     * 失败响应（自定义状态码）
+     */
     public static <T> Result<T> fail(int code, String message) {
         Result<T> result = new Result<>();
         result.setCode(code);
