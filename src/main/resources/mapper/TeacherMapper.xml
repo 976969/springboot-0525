@@ -54,6 +54,14 @@
         WHERE id = #{id}
     </update>
 
+    <select id="selectByPhone" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM teacher WHERE phone = #{phone}
+    </select>
+
+    <select id="selectByEmail" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM teacher WHERE email = #{email}
+    </select>
+
     <delete id="deleteById">
         DELETE FROM teacher WHERE id = #{id}
     </delete>

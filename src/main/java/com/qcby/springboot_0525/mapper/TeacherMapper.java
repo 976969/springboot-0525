@@ -27,6 +27,12 @@ public interface TeacherMapper {
     /** 根据ID更新教师信息 */
     int updateById(Teacher teacher);
 
+    /** 根据手机号查询教师 */
+    Teacher selectByPhone(@Param("phone") String phone);
+
+    /** 根据邮箱查询教师 */
+    Teacher selectByEmail(@Param("email") String email);
+
     /** 根据ID删除教师 */
     int deleteById(@Param("id") Long id);
 }

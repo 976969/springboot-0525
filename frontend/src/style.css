@@ -1,3 +1,5 @@
+/* ========== 全局美化样式 ========== */
+
 * {
   margin: 0;
   padding: 0;
@@ -5,33 +7,93 @@
 }
 
 body {
-  font-family: system-ui, -apple-system, sans-serif;
-  overflow: hidden; /* 防止body滚动 */
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #303133;
+  background: #f5f7fa;
+  overflow: hidden;
 }
 
-/* 优化表格显示 */
+/* 卡片圆角优化 */
+.el-card {
+  border-radius: 12px !important;
+  border: none !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  transition: box-shadow 0.3s;
+}
+.el-card:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+/* 表格 */
 .el-table {
+  font-size: 13px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.el-table th.el-table__cell {
+  background: #fafafa;
+  font-weight: 600;
+  color: #303133;
+}
+
+/* 按钮圆角 */
+.el-button {
+  border-radius: 8px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+/* 输入框 */
+.el-input__wrapper {
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+/* 下拉选择器 */
+.el-select .el-input__wrapper {
+  border-radius: 8px;
+}
+
+/* 标签圆角 */
+.el-tag {
+  border-radius: 6px;
+}
+
+/* 分页器 */
+.el-pagination {
+  font-weight: 500;
+}
+
+/* 对话框 */
+.el-dialog {
+  border-radius: 16px;
+}
+.el-dialog__header {
+  padding: 20px 24px 10px;
+  font-weight: 600;
+}
+
+/* 菜单项过渡 */
+.el-menu-item {
+  transition: all 0.2s ease;
+}
+.el-menu-item:hover {
+  background-color: rgba(102, 187, 106, 0.08) !important;
+}
+
+/* 面包屑 */
+.el-breadcrumb {
   font-size: 13px;
 }
 
-.el-table .el-table__cell {
-  padding: 8px 0;
+/* 标签页 */
+.el-tabs__item {
+  font-weight: 500;
 }
 
-/* 优化卡片间距 */
-.el-card {
-  border-radius: 4px;
+/* 空状态 */
+.el-empty__description {
+  color: #a8abb2;
 }
-
-/* 优化按钮大小 */
-.el-button--small {
-  padding: 5px 10px;
-  font-size: 12px;
-}
-
-/* 优化标签大小 */
-.el-tag--small {
-  font-size: 11px;
-  padding: 0 8px;
-}
-

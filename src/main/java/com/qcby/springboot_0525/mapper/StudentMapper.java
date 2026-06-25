@@ -27,6 +27,12 @@ public interface StudentMapper {
     /** 根据ID更新学生信息 */
     int updateById(Student student);
 
+    /** 根据手机号查询学生 */
+    Student selectByPhone(@Param("phone") String phone);
+
+    /** 根据邮箱查询学生 */
+    Student selectByEmail(@Param("email") String email);
+
     /** 根据ID删除学生 */
     int deleteById(@Param("id") Long id);
 }

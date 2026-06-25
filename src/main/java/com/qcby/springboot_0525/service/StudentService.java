@@ -55,4 +55,14 @@ public class StudentService {
     public void delete(Long id) {
         studentMapper.deleteById(id);
     }
+
+    /** 根据手机号查询学生 */
+    public Student getByPhone(String phone) {
+        return studentMapper.selectByPhone(phone);
+    }
+
+    /** 根据邮箱查询学生 */
+    public Student getByEmail(String email) {
+        return studentMapper.selectByEmail(email);
+    }
 }

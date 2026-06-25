@@ -8,7 +8,7 @@
       <div class="navbar-container">
         <!-- 左侧Logo -->
         <div class="navbar-logo">
-          <el-icon :size="28" color="#409EFF"><School /></el-icon>
+          <el-icon :size="28" color="#66bb6a"><School /></el-icon>
           <span class="logo-text">智能实训评价系统</span>
         </div>
 
@@ -61,6 +61,12 @@
               <span>报表中心</span>
             </el-menu-item>
 
+            <!-- 公共功能 -->
+            <el-menu-item index="/profile">
+              <el-icon><User /></el-icon>
+              <span>个人中心</span>
+            </el-menu-item>
+
             <!-- 学生专属功能 -->
             <el-menu-item v-if="role === 'student'" index="/my-courses">
               <el-icon><Reading /></el-icon>
@@ -82,7 +88,7 @@
           <el-tag :type="roleTagType" size="small" effect="plain">{{ roleLabel }}</el-tag>
           <el-dropdown @command="handleCommand" trigger="click">
             <div class="user-info">
-              <el-avatar :size="36" icon="UserFilled" />
+              <el-avatar :size="36" :src="userStore.userInfo.avatar || ''" icon="UserFilled" />
               <span class="username">{{ userStore.userInfo.realName || '用户' }}</span>
               <el-icon><ArrowDown /></el-icon>
             </div>
@@ -192,11 +198,11 @@ const handleCommand = (command) => {
 }
 
 .navbar-menu :deep(.el-menu-item:hover) {
-  background-color: rgba(64, 158, 255, 0.05);
+  background-color: rgba(102, 187, 106, 0.06);
 }
 
 .navbar-menu :deep(.el-menu-item.is-active) {
-  background: linear-gradient(to bottom, transparent 0%, transparent 66px, #409EFF 66px, #409EFF 70px);
+  background: linear-gradient(to bottom, transparent 0%, transparent 66px, #66bb6a 66px, #66bb6a 70px);
   font-weight: bold;
 }
 

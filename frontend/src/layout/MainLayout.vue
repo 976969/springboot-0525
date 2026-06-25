@@ -1,18 +1,22 @@
 <!--
-  管理员侧边栏布局（角色化菜单、权限控制）
+  管理员侧边栏布局（可收缩侧边栏、角色化菜单）
 -->
 <template>
-  <!-- 根据角色显示不同布局 -->
   <div v-if="role === 'admin'" style="height: 100vh">
-    <!-- 管理员:侧边栏布局 -->
     <el-container style="height: 100vh">
-      <el-aside width="180px" style="background-color: #304156">
-        <div class="logo">智能实训评价系统</div>
+      <!-- 侧边栏 -->
+      <el-aside :width="isCollapse ? '64px' : '200px'" class="sidebar">
+        <div class="logo">
+          <span v-if="!isCollapse">智能实训评价系统</span>
+          <span v-else class="logo-collapsed">实训</span>
+        </div>
         <el-menu
           :default-active="$route.path"
-          background-color="#304156"
-          text-color="#bfcbd9"
-          active-text-color="#409EFF"
+          background-color="#1d1e2c"
+          text-color="#aeb5c4"
+          active-text-color="#66bb6a"
+          :collapse="isCollapse"
+          :collapse-transition="false"
           router
         >
           <el-menu-item index="/home">
@@ -69,14 +73,22 @@
           </el-menu-item>
         </el-menu>
       </el-aside>
+
       <el-container>
+        <!-- 顶部栏 -->
         <el-header class="header">
-          <span class="title">{{ $route.meta.title }}</span>
+          <div class="header-left">
+            <el-icon class="collapse-btn" :size="22" @click="isCollapse = !isCollapse">
+              <Fold v-if="!isCollapse" />
+              <Expand v-else />
+            </el-icon>
+            <span class="title">{{ $route.meta.title }}</span>
+          </div>
           <div class="header-right">
-            <el-tag :type="roleTagType" size="small">{{ roleLabel }}</el-tag>
+            <el-tag :type="roleTagType" size="small" effect="plain">{{ roleLabel }}</el-tag>
             <span class="username">{{ userStore.userInfo.realName || '用户' }}</span>
             <el-dropdown @command="handleCommand">
-              <el-avatar :size="32" icon="UserFilled" />
+              <el-avatar :size="34" :src="avatarSrc" icon="UserFilled" class="header-avatar" />
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="profile">个人中心</el-dropdown-item>
@@ -86,27 +98,31 @@
             </el-dropdown>
           </div>
         </el-header>
-        <el-main style="padding: 15px; background-color: #f0f2f5; overflow-x: hidden">
+
+        <!-- 内容区 -->
+        <el-main class="main-area">
           <router-view />
         </el-main>
       </el-container>
     </el-container>
   </div>
-  
+
   <div v-else>
-    <!-- 教师/学生:顶部导航栏布局 -->
     <top-navbar-layout />
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import TopNavbarLayout from './TopNavbarLayout.vue'
+import { Fold, Expand } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
+
+const isCollapse = ref(false)
 
 const role = computed(() => userStore.userInfo.role || 'student')
 const roleLabel = computed(() => {
@@ -117,6 +133,7 @@ const roleTagType = computed(() => {
   const map = { admin: 'danger', teacher: 'warning', student: 'success' }
   return map[role.value] || 'info'
 })
+const avatarSrc = computed(() => userStore.userInfo.avatar || '')
 
 const handleCommand = (command) => {
   if (command === 'logout') {
@@ -129,33 +146,101 @@ const handleCommand = (command) => {
 </script>
 
 <style scoped>
+/* 侧边栏 */
+.sidebar {
+  background-color: #1d1e2c !important;
+  transition: width 0.3s ease;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar :deep(.el-menu) {
+  border-right: none;
+}
+
+/* 修复 el-menu 折叠时图标居中 */
+.sidebar :deep(.el-menu--collapse) {
+  width: 64px;
+}
+.sidebar :deep(.el-menu--collapse .el-menu-item) {
+  justify-content: center;
+  padding: 0 !important;
+}
+
+/* Logo */
 .logo {
   height: 60px;
-  line-height: 60px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #fff;
   font-size: 16px;
-  font-weight: bold;
-  border-bottom: 1px solid #3d4d5e;
+  font-weight: 700;
+  background: #1d1e2c;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  white-space: nowrap;
+  letter-spacing: 1px;
+  flex-shrink: 0;
 }
+.logo-collapsed {
+  font-size: 14px;
+  letter-spacing: 2px;
+}
+
+/* 顶部栏 */
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #e6e6e6;
   background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  padding: 0 20px;
+  z-index: 10;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.collapse-btn {
+  cursor: pointer;
+  color: #606266;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+.collapse-btn:hover {
+  background: #f0f2f5;
+  color: #66bb6a;
 }
 .title {
-  font-size: 18px;
-  font-weight: bold;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
 }
 .header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 .username {
-  font-size: 14px;
-  color: #666;
+  font-size: 13px;
+  color: #909399;
+}
+.header-avatar {
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: transform 0.2s;
+}
+.header-avatar:hover {
+  transform: scale(1.05);
+}
+
+/* 内容区 */
+.main-area {
+  padding: 20px;
+  background: #f5f7fa;
+  overflow-x: hidden;
+  min-height: calc(100vh - 60px);
 }
 </style>

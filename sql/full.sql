@@ -2,10 +2,10 @@
 -- 智能实训教学智能评价系统 - 完整版数据库脚本
 -- 数据库名: training_eval
 -- 使用方式: 在MySQL中直接执行本文件即可一键完成建库+建表+插入数据
--- 共13张表: admin, teacher, student, course, course_student,
+-- 共14张表: admin, teacher, student, course, course_student,
 --   training_task, training_result, evaluation_indicator,
 --   evaluation_record, evaluation_report, check_record,
---   class_schedule, banner
+--   class_schedule, banner, verification_code
 -- ============================================================
 
 -- 创建数据库(如不存在)
@@ -247,6 +247,20 @@ CREATE TABLE `banner` (
     `update_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='轮播图表';
+
+-- 14. 验证码表
+DROP TABLE IF EXISTS `verification_code`;
+CREATE TABLE `verification_code` (
+    `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `target`      VARCHAR(100) NOT NULL                COMMENT '目标地址（邮箱或手机号）',
+    `code`        VARCHAR(10)  NOT NULL                COMMENT '验证码（6位数字）',
+    `type`        VARCHAR(20)  NOT NULL                COMMENT '类型: email / phone',
+    `used`        TINYINT      NOT NULL DEFAULT 0      COMMENT '是否已使用: 0未使用 1已使用',
+    `expire_time` DATETIME     NOT NULL                COMMENT '过期时间',
+    `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_target` (`target`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='验证码表';
 
 
 -- ================================================================
@@ -510,7 +524,8 @@ UNION ALL SELECT '评价记录',   COUNT(*) FROM `evaluation_record`
 UNION ALL SELECT '评价报告',   COUNT(*) FROM `evaluation_report`
 UNION ALL SELECT '核查记录',   COUNT(*) FROM `check_record`
 UNION ALL SELECT '课程表',     COUNT(*) FROM `class_schedule`
-UNION ALL SELECT '轮播图',     COUNT(*) FROM `banner`;
+UNION ALL SELECT '轮播图',     COUNT(*) FROM `banner`
+UNION ALL SELECT '验证码',     COUNT(*) FROM `verification_code`;
 
 -- ============================================================
 -- 完整版脚本执行完毕!
@@ -1007,5 +1022,5 @@ UNION ALL SELECT '课程表',     COUNT(*) FROM `class_schedule`;
 
 -- ============================================================
 -- 完整版脚本执行完毕!
--- 共12张表, 全部数据已就绪
+-- 共14张表, 全部数据已就绪
 -- ============================================================

@@ -14,6 +14,7 @@ import com.qcby.springboot_0525.entity.Student;
 import com.qcby.springboot_0525.entity.Teacher;
 import com.qcby.springboot_0525.service.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import java.util.HashMap;
@@ -300,6 +301,54 @@ public class UserController {
             studentService.update(student);
         }
         return Result.success();
+    }
+
+    /**
+     * 上传头像
+     */
+    @PostMapping("/avatar")
+    public Result<String> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        String role = (String) StpUtil.getSession().get("role");
+        Long realId = getRealIdFromSession();
+        if (realId == null) {
+            return Result.fail("用户信息获取失败");
+        }
+        try {
+            // 保存到 uploads/avatar/ 目录
+            String uploadDir = System.getProperty("user.dir") + "/uploads/avatar/";
+            java.io.File dir = new java.io.File(uploadDir);
+            if (!dir.exists()) dir.mkdirs();
+
+            String ext = file.getOriginalFilename() != null
+                ? file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."))
+                : ".png";
+            String fileName = role + "_" + realId + "_" + System.currentTimeMillis() + ext;
+            java.io.File dest = new java.io.File(uploadDir + fileName);
+            file.transferTo(dest);
+
+            String avatarUrl = "/api/uploads/avatar/" + fileName;
+
+            // 更新对应表的 avatar 字段
+            if ("admin".equals(role)) {
+                Admin admin = new Admin();
+                admin.setId(realId);
+                admin.setAvatar(avatarUrl);
+                adminService.update(admin);
+            } else if ("teacher".equals(role)) {
+                Teacher teacher = new Teacher();
+                teacher.setId(realId);
+                teacher.setAvatar(avatarUrl);
+                teacherService.update(teacher);
+            } else if ("student".equals(role)) {
+                Student student = new Student();
+                student.setId(realId);
+                student.setAvatar(avatarUrl);
+                studentService.update(student);
+            }
+            return Result.success(avatarUrl);
+        } catch (Exception e) {
+            return Result.fail("头像上传失败: " + e.getMessage());
+        }
     }
 
     /**

@@ -27,6 +27,12 @@ public interface AdminMapper {
     /** 根据ID更新管理员信息 */
     int updateById(Admin admin);
 
+    /** 根据手机号查询管理员 */
+    Admin selectByPhone(@Param("phone") String phone);
+
+    /** 根据邮箱查询管理员 */
+    Admin selectByEmail(@Param("email") String email);
+
     /** 根据ID删除管理员 */
     int deleteById(@Param("id") Long id);
 }

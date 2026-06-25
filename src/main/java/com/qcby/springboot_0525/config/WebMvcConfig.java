@@ -24,5 +24,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
         // banner图片访问映射（用/banner-image/避免与BannerController的/{id}冲突）
         registry.addResourceHandler("/banner-image/**")
                 .addResourceLocations("file:" + basePath + "banner/");
+        // 头像图片访问映射
+        registry.addResourceHandler("/uploads/avatar/**")
+                .addResourceLocations("file:" + basePath + "avatar/");
     }
 }
