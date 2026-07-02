@@ -13,38 +13,49 @@
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
         <result column="course_name" property="courseName"/>
+        <result column="teacher_id" property="teacherId"/>
+        <result column="teacher_name" property="teacherName"/>
     </resultMap>
 
     <select id="selectById" resultMap="BaseResultMap">
-        SELECT t.*, c.name AS course_name
-        FROM training_task t LEFT JOIN course c ON t.course_id = c.id
+        SELECT t.*, c.name AS course_name, c.teacher_id, te.real_name AS teacher_name
+        FROM training_task t 
+        LEFT JOIN course c ON t.course_id = c.id
+        LEFT JOIN teacher te ON c.teacher_id = te.id
         WHERE t.id = #{id}
     </select>
 
     <select id="selectList" resultMap="BaseResultMap">
-        SELECT t.*, c.name AS course_name
-        FROM training_task t LEFT JOIN course c ON t.course_id = c.id
+        SELECT t.*, c.name AS course_name, c.teacher_id, te.real_name AS teacher_name
+        FROM training_task t 
+        LEFT JOIN course c ON t.course_id = c.id
+        LEFT JOIN teacher te ON c.teacher_id = te.id
         ORDER BY t.create_time DESC
     </select>
 
     <select id="selectActiveList" resultMap="BaseResultMap">
-        SELECT t.*, c.name AS course_name
-        FROM training_task t LEFT JOIN course c ON t.course_id = c.id
+        SELECT t.*, c.name AS course_name, c.teacher_id, te.real_name AS teacher_name
+        FROM training_task t 
+        LEFT JOIN course c ON t.course_id = c.id
+        LEFT JOIN teacher te ON c.teacher_id = te.id
         WHERE (t.deadline IS NULL OR t.deadline >= NOW()) AND t.status = 1
         ORDER BY t.create_time DESC
     </select>
 
     <select id="selectByCourseId" resultMap="BaseResultMap">
-        SELECT t.*, c.name AS course_name
-        FROM training_task t LEFT JOIN course c ON t.course_id = c.id
+        SELECT t.*, c.name AS course_name, c.teacher_id, te.real_name AS teacher_name
+        FROM training_task t 
+        LEFT JOIN course c ON t.course_id = c.id
+        LEFT JOIN teacher te ON c.teacher_id = te.id
         WHERE t.course_id = #{courseId}
         ORDER BY t.create_time DESC
     </select>
 
     <select id="selectByTeacherId" resultMap="BaseResultMap">
-        SELECT t.*, c.name AS course_name
+        SELECT t.*, c.name AS course_name, c.teacher_id, te.real_name AS teacher_name
         FROM training_task t 
         LEFT JOIN course c ON t.course_id = c.id
+        LEFT JOIN teacher te ON c.teacher_id = te.id
         WHERE c.teacher_id = #{teacherId}
         ORDER BY t.create_time DESC
     </select>

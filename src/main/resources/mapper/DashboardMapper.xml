@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.qcby.springboot_0525.mapper.DashboardMapper">
+
+    <!-- ============ 学生端 ============ -->
+
+    <!-- 学生选课数量 -->
+    <select id="countStudentCourses" resultType="int">
+        SELECT COUNT(*) FROM course_student WHERE student_id = #{studentId}
+    </select>
+
+    <!-- 学生已提交任务数 -->
+    <select id="countStudentCompletedTasks" resultType="int">
+        SELECT COUNT(*) FROM training_result WHERE student_id = #{studentId}
+    </select>
+
+    <!-- 学生平均成绩（基于评价记录的final_score） -->
+    <select id="getStudentAverageScore" resultType="java.lang.Double">
+        SELECT ROUND(AVG(er.final_score), 1)
+        FROM evaluation_record er
+        JOIN training_result r ON er.result_id = r.id
+        WHERE r.student_id = #{studentId}
+          AND er.final_score IS NOT NULL
+    </select>
+
+    <!-- 学生获得评价报告数 -->
+    <select id="countStudentReports" resultType="int">
+        SELECT COUNT(*)
+        FROM evaluation_report
+        WHERE student_id = #{studentId}
+    </select>
+
+    <!-- 学生学习天数（从首次提交到现在的天数） -->
+    <select id="getStudentStudyDays" resultType="int">
+        SELECT DATEDIFF(NOW(), MIN(upload_time)) + 1
+        FROM training_result
+        WHERE student_id = #{studentId}
+    </select>
+
+    <!-- 学生最近30天每日提交数量（学习进度） -->
+    <select id="getStudentProgress30Days" resultType="map">
+        SELECT
+            DATE_FORMAT(d.date, '%m-%d') AS date,
+            COALESCE(cnt.cnt, 0) AS submissions
+        FROM (
+            SELECT DATE_SUB(CURDATE(), INTERVAL seq.n DAY) AS date
+            FROM (
+                SELECT a.N + b.N * 10 + c.N * 100 AS n
+                FROM (SELECT 0 AS N UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4
+                      UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) a,
+                     (SELECT 0 AS N UNION SELECT 1 UNION SELECT 2) b,
+                     (SELECT 0 AS N) c
+            ) seq
+            WHERE seq.n BETWEEN 0 AND 29
+        ) d
+        LEFT JOIN (
+            SELECT DATE(upload_time) AS upload_date, COUNT(*) AS cnt
+            FROM training_result
+            WHERE student_id = #{studentId}
+              AND upload_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            GROUP BY DATE(upload_time)
+        ) cnt ON cnt.upload_date = d.date
+        ORDER BY d.date ASC
+    </select>
+
+    <!-- 学生各课程完成度 -->
+    <select id="getStudentCourseCompletion" resultType="map">
+        SELECT
+            c.name AS name,
+            COALESCE(ROUND(
+                (SELECT COUNT(*) FROM training_result r2
+                 WHERE r2.task_id IN (SELECT id FROM training_task WHERE course_id = c.id)
+                   AND r2.student_id = #{studentId})
+                /
+                NULLIF((SELECT COUNT(*) FROM training_task WHERE course_id = c.id), 0)
+                * 100, 0
+            ), 0) AS value
+        FROM course c
+        WHERE c.id IN (SELECT course_id FROM course_student WHERE student_id = #{studentId})
+    </select>
+
+    <!-- 学生成绩分布（按分数段统计） -->
+    <select id="getStudentScoreDistribution" resultType="map">
+        SELECT
+            CASE
+                WHEN er.final_score >= 90 THEN '90-100'
+                WHEN er.final_score >= 80 THEN '80-89'
+                WHEN er.final_score >= 70 THEN '70-79'
+                WHEN er.final_score >= 60 THEN '60-69'
+                ELSE '&lt;60'
+            END AS name,
+            COUNT(*) AS value
+        FROM evaluation_record er
+        JOIN training_result r ON er.result_id = r.id
+        WHERE r.student_id = #{studentId}
+          AND er.final_score IS NOT NULL
+        GROUP BY name
+        ORDER BY FIELD(name, '90-100', '80-89', '70-79', '60-69', '&lt;60')
+    </select>
+
+    <!-- ============ 教师端 ============ -->
+
+    <!-- 教师教授课程数 -->
+    <select id="countTeacherCourses" resultType="int">
+        SELECT COUNT(*) FROM course WHERE teacher_id = #{teacherId}
+    </select>
+
+    <!-- 教师学生总数（去重） -->
+    <select id="countTeacherStudents" resultType="int">
+        SELECT COUNT(DISTINCT cs.student_id)
+        FROM course_student cs
+        JOIN course c ON cs.course_id = c.id
+        WHERE c.teacher_id = #{teacherId}
+    </select>
+
+    <!-- 教师待批改任务数（成果status=0） -->
+    <select id="countTeacherPendingTasks" resultType="int">
+        SELECT COUNT(*)
+        FROM training_result r
+        JOIN training_task t ON r.task_id = t.id
+        JOIN course c ON t.course_id = c.id
+        WHERE c.teacher_id = #{teacherId}
+          AND r.status = 0
+    </select>
+
+    <!-- 教师学生平均成绩 -->
+    <select id="getTeacherAverageScore" resultType="java.lang.Double">
+        SELECT ROUND(AVG(er.final_score), 1)
+        FROM evaluation_record er
+        JOIN training_result r ON er.result_id = r.id
+        JOIN training_task t ON r.task_id = t.id
+        JOIN course c ON t.course_id = c.id
+        WHERE c.teacher_id = #{teacherId}
+          AND er.final_score IS NOT NULL
+    </select>
+
+    <!-- 教师各课程学生人数 -->
+    <select id="getTeacherCourseStudents" resultType="map">
+        SELECT
+            c.name AS course,
+            COUNT(cs.student_id) AS students
+        FROM course c
+        LEFT JOIN course_student cs ON cs.course_id = c.id
+        WHERE c.teacher_id = #{teacherId}
+        GROUP BY c.id, c.name
+        ORDER BY c.name
+    </select>
+
+    <!-- 教师近7天每日提交数量 -->
+    <select id="getTeacherTaskTrend7Days" resultType="map">
+        SELECT
+            DATE_FORMAT(d.date, '%m-%d') AS date,
+            COALESCE(cnt.cnt, 0) AS submissions
+        FROM (
+            SELECT DATE_SUB(CURDATE(), INTERVAL seq.n DAY) AS date
+            FROM (
+                SELECT 0 AS n UNION SELECT 1 UNION SELECT 2 UNION SELECT 3
+                UNION SELECT 4 UNION SELECT 5 UNION SELECT 6
+            ) seq
+        ) d
+        LEFT JOIN (
+            SELECT DATE(r.upload_time) AS upload_date, COUNT(*) AS cnt
+            FROM training_result r
+            JOIN training_task t ON r.task_id = t.id
+            JOIN course c ON t.course_id = c.id
+            WHERE c.teacher_id = #{teacherId}
+              AND r.upload_time >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            GROUP BY DATE(r.upload_time)
+        ) cnt ON cnt.upload_date = d.date
+        ORDER BY d.date ASC
+    </select>
+
+    <!-- 教师学生成绩分布（按分数段统计） -->
+    <select id="getTeacherScoreDistribution" resultType="map">
+        SELECT
+            CASE
+                WHEN er.final_score >= 90 THEN '优秀(90-100)'
+                WHEN er.final_score >= 80 THEN '良好(80-89)'
+                WHEN er.final_score >= 70 THEN '中等(70-79)'
+                WHEN er.final_score >= 60 THEN '及格(60-69)'
+                ELSE '不及格(&lt;60)'
+            END AS name,
+            COUNT(*) AS value
+        FROM evaluation_record er
+        JOIN training_result r ON er.result_id = r.id
+        JOIN training_task t ON r.task_id = t.id
+        JOIN course c ON t.course_id = c.id
+        WHERE c.teacher_id = #{teacherId}
+          AND er.final_score IS NOT NULL
+        GROUP BY name
+        ORDER BY MIN(er.final_score) DESC
+    </select>
+
+    <!-- ============ 管理员端 ============ -->
+
+    <!-- 学生总数 -->
+    <select id="countAllStudents" resultType="int">
+        SELECT COUNT(*) FROM student WHERE status = 1
+    </select>
+
+    <!-- 教师总数 -->
+    <select id="countAllTeachers" resultType="int">
+        SELECT COUNT(*) FROM teacher WHERE status = 1
+    </select>
+
+    <!-- 课程总数 -->
+    <select id="countAllCourses" resultType="int">
+        SELECT COUNT(*) FROM course WHERE status = 1
+    </select>
+
+    <!-- 待核查成果数 -->
+    <select id="countPendingResults" resultType="int">
+        SELECT COUNT(*) FROM training_result WHERE status = 0
+    </select>
+
+    <!-- 近30天每日成果提交量（全系统） -->
+    <select id="getSystemProgress30Days" resultType="map">
+        SELECT
+            DATE_FORMAT(d.date, '%m-%d') AS date,
+            COALESCE(cnt.cnt, 0) AS submissions
+        FROM (
+            SELECT DATE_SUB(CURDATE(), INTERVAL seq.n DAY) AS date
+            FROM (
+                SELECT a.N + b.N * 10 + c.N * 100 AS n
+                FROM (SELECT 0 AS N UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4
+                      UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) a,
+                     (SELECT 0 AS N UNION SELECT 1 UNION SELECT 2) b,
+                     (SELECT 0 AS N) c
+            ) seq
+            WHERE seq.n BETWEEN 0 AND 29
+        ) d
+        LEFT JOIN (
+            SELECT DATE(upload_time) AS upload_date, COUNT(*) AS cnt
+            FROM training_result
+            WHERE upload_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            GROUP BY DATE(upload_time)
+        ) cnt ON cnt.upload_date = d.date
+        ORDER BY d.date ASC
+    </select>
+
+    <!-- 各课程选课人数 -->
+    <select id="getCourseEnrollment" resultType="map">
+        SELECT
+            c.name AS course,
+            COUNT(cs.student_id) AS students
+        FROM course c
+        LEFT JOIN course_student cs ON cs.course_id = c.id
+        WHERE c.status = 1
+        GROUP BY c.id, c.name
+        ORDER BY students DESC
+    </select>
+
+    <!-- 全系统成绩分布 -->
+    <select id="getSystemScoreDistribution" resultType="map">
+        SELECT
+            CASE
+                WHEN er.final_score >= 90 THEN '优秀(90-100)'
+                WHEN er.final_score >= 80 THEN '良好(80-89)'
+                WHEN er.final_score >= 70 THEN '中等(70-79)'
+                WHEN er.final_score >= 60 THEN '及格(60-69)'
+                ELSE '不及格(&lt;60)'
+            END AS name,
+            COUNT(*) AS value
+        FROM evaluation_record er
+        WHERE er.final_score IS NOT NULL
+        GROUP BY name
+        ORDER BY MIN(er.final_score) DESC
+    </select>
+
+    <!-- 成果状态分布 -->
+    <select id="getResultStatusDistribution" resultType="map">
+        SELECT
+            CASE status
+                WHEN 0 THEN '待核查'
+                WHEN 1 THEN '已核查'
+                WHEN 2 THEN '已评价'
+            END AS name,
+            COUNT(*) AS value
+        FROM training_result
+        GROUP BY status
+        ORDER BY status
+    </select>
+
+    <!-- 最近10条提交记录 -->
+    <select id="getRecentSubmissions" resultType="map">
+        SELECT
+            s.real_name AS studentName,
+            t.title AS taskTitle,
+            c.name AS courseName,
+            r.upload_time AS uploadTime,
+            r.file_name AS fileName,
+            CASE r.status
+                WHEN 0 THEN '待核查'
+                WHEN 1 THEN '已核查'
+                WHEN 2 THEN '已评价'
+            END AS statusText
+        FROM training_result r
+        JOIN training_task t ON r.task_id = t.id
+        JOIN course c ON t.course_id = c.id
+        JOIN student s ON r.student_id = s.id
+        ORDER BY r.upload_time DESC
+        LIMIT 10
+    </select>
+
+</mapper>

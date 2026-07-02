@@ -21,8 +21,28 @@
         SELECT s.*, c.name AS course_name, t.real_name AS teacher_name
         FROM class_schedule s
         LEFT JOIN course c ON s.course_id = c.id
-        LEFT JOIN teacher t ON s.teacher_id = t.id
-        WHERE s.teacher_id = #{teacherId}
+        LEFT JOIN teacher t ON c.teacher_id = t.id
+        WHERE c.teacher_id = #{teacherId}
+        ORDER BY s.day_of_week, s.start_time
+    </select>
+
+    <select id="selectByCourseId" resultMap="BaseResultMap">
+        SELECT s.*, c.name AS course_name, t.real_name AS teacher_name
+        FROM class_schedule s
+        LEFT JOIN course c ON s.course_id = c.id
+        LEFT JOIN teacher t ON c.teacher_id = t.id
+        WHERE s.course_id = #{courseId}
+        ORDER BY s.day_of_week, s.start_time
+    </select>
+
+    <select id="selectByStudentId" resultMap="BaseResultMap">
+        SELECT s.*, c.name AS course_name, t.real_name AS teacher_name
+        FROM class_schedule s
+        LEFT JOIN course c ON s.course_id = c.id
+        LEFT JOIN teacher t ON c.teacher_id = t.id
+        WHERE s.course_id IN (
+            SELECT cs.course_id FROM course_student cs WHERE cs.student_id = #{studentId}
+        )
         ORDER BY s.day_of_week, s.start_time
     </select>
 
@@ -30,7 +50,7 @@
         SELECT s.*, c.name AS course_name, t.real_name AS teacher_name
         FROM class_schedule s
         LEFT JOIN course c ON s.course_id = c.id
-        LEFT JOIN teacher t ON s.teacher_id = t.id
+        LEFT JOIN teacher t ON c.teacher_id = t.id
         ORDER BY s.day_of_week, s.start_time
     </select>
 
@@ -38,7 +58,7 @@
         SELECT s.*, c.name AS course_name, t.real_name AS teacher_name
         FROM class_schedule s
         LEFT JOIN course c ON s.course_id = c.id
-        LEFT JOIN teacher t ON s.teacher_id = t.id
+        LEFT JOIN teacher t ON c.teacher_id = t.id
         WHERE s.id = #{id}
     </select>
 

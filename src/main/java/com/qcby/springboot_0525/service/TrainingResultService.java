@@ -152,7 +152,7 @@ public class TrainingResultService {
             existingResult.setFileType(ext.toLowerCase());
             existingResult.setFileSize(file.getSize());
             existingResult.setParsedContent(parsedContent);
-            existingResult.setStatus(0); // 重置为待核查
+            existingResult.setStatus(0); // 重置为待处理
             existingResult.setUploadTime(new java.util.Date());
             
             resultMapper.updateById(existingResult);
@@ -167,7 +167,7 @@ public class TrainingResultService {
             result.setFileType(ext.toLowerCase());
             result.setFileSize(file.getSize());
             result.setParsedContent(parsedContent);
-            result.setStatus(0); // 待核查
+            result.setStatus(0); // 待处理
             
             resultMapper.insert(result);
         }

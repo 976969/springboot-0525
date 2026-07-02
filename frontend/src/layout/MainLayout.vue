@@ -19,13 +19,9 @@
           :collapse-transition="false"
           router
         >
-          <el-menu-item index="/home">
+          <el-menu-item :index="role === 'admin' ? '/admin-home' : '/home'">
             <el-icon><HomeFilled /></el-icon>
-            <span>首页</span>
-          </el-menu-item>
-          <el-menu-item index="/profile">
-            <el-icon><User /></el-icon>
-            <span>个人中心</span>
+            <span>{{ role === 'admin' ? '系统总览' : '首页' }}</span>
           </el-menu-item>
           <el-menu-item v-if="role === 'admin'" index="/user-manage">
             <el-icon><UserFilled /></el-icon>
@@ -35,6 +31,10 @@
             <el-icon><PictureFilled /></el-icon>
             <span>大屏管理</span>
           </el-menu-item>
+          <el-menu-item v-if="role === 'admin'" index="/schedule-manage">
+            <el-icon><Calendar /></el-icon>
+            <span>选课管理</span>
+          </el-menu-item>
           <el-menu-item v-if="role === 'teacher' || role === 'admin'" index="/course">
             <el-icon><Reading /></el-icon>
             <span>课程管理</span>
@@ -43,25 +43,29 @@
             <el-icon><List /></el-icon>
             <span>实训任务</span>
           </el-menu-item>
-          <el-menu-item v-if="role === 'teacher' || role === 'admin'" index="/check">
-            <el-icon><CircleCheck /></el-icon>
-            <span>智能核查</span>
-          </el-menu-item>
-          <el-menu-item v-if="role === 'teacher' || role === 'admin'" index="/evaluate">
-            <el-icon><Star /></el-icon>
-            <span>评价管理</span>
-          </el-menu-item>
           <el-menu-item v-if="role === 'teacher' || role === 'admin'" index="/indicator">
             <el-icon><SetUp /></el-icon>
             <span>评价指标</span>
+          </el-menu-item>
+          <el-menu-item v-if="role === 'teacher' || role === 'admin'" index="/evaluate">
+            <el-icon><Star /></el-icon>
+            <span>AI评分</span>
           </el-menu-item>
           <el-menu-item v-if="role === 'teacher' || role === 'admin'" index="/report">
             <el-icon><DataAnalysis /></el-icon>
             <span>报表中心</span>
           </el-menu-item>
+          <el-menu-item v-if="role === 'student'" index="/course-select">
+            <el-icon><Plus /></el-icon>
+            <span>选课中心</span>
+          </el-menu-item>
           <el-menu-item v-if="role === 'student'" index="/my-courses">
             <el-icon><Reading /></el-icon>
             <span>我的课程</span>
+          </el-menu-item>
+          <el-menu-item v-if="role === 'student'" index="/ai-practice">
+            <el-icon><EditPen /></el-icon>
+            <span>AI练习</span>
           </el-menu-item>
           <el-menu-item v-if="role === 'student'" index="/upload">
             <el-icon><Upload /></el-icon>
@@ -70,6 +74,10 @@
           <el-menu-item v-if="role === 'student'" index="/my-scores">
             <el-icon><Star /></el-icon>
             <span>我的成绩</span>
+          </el-menu-item>
+          <el-menu-item index="/profile">
+            <el-icon><User /></el-icon>
+            <span>个人中心</span>
           </el-menu-item>
         </el-menu>
       </el-aside>

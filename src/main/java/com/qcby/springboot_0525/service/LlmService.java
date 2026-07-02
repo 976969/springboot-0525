@@ -97,23 +97,6 @@ public class LlmService {
     }
 
     /**
-     * 智能核查 - 三维度结构化核查
-     * 返回包含 completeness、logic、match 三个维度评分和建议的JSON
-     */
-    public String checkTraining(String requirements, String content) throws IOException {
-        String systemPrompt = "你是一位严谨的软件实训教学评审专家。请根据实训要求，对学生的实训成果从三个维度进行核查。\n" +
-                "评分规则：每个维度给出0-100分的评分。60分及以上为通过，60分以下为存在问题。\n" +
-                "请严格按照以下JSON格式返回，不要添加任何其他内容：\n" +
-                "{\"completeness\":{\"score\":分数,\"issue\":\"问题描述，通过则写无\",\"suggestion\":\"改进建议，通过则写良好\"}," +
-                "\"logic\":{\"score\":分数,\"issue\":\"问题描述，通过则写无\",\"suggestion\":\"改进建议，通过则写良好\"}," +
-                "\"match\":{\"score\":分数,\"issue\":\"问题描述，通过则写无\",\"suggestion\":\"改进建议，通过则写良好\"}," +
-                "\"overall_suggestion\":\"总体改进建议\"}";
-
-        String userPrompt = "实训要求：\n" + requirements + "\n\n学生实训成果内容：\n" + content;
-        return chat(systemPrompt, userPrompt);
-    }
-
-    /**
      * AI评分 - 根据指标评价
      */
     public String evaluateByIndicator(String indicatorName, String indicatorDesc,
@@ -152,6 +135,22 @@ public class LlmService {
 
         String userPrompt = "要求：" + teacherRequirements +
                 "\n现有指标：" + existingIndicators;
+        return chat(systemPrompt, userPrompt);
+    }
+
+    /**
+     * AI生成课程练习题（10道选择题，每题10分）
+     * @param courseName 课程名称
+     * @param courseDesc 课程描述
+     * @return JSON格式的练习题数组
+     */
+    public String generatePracticeQuestions(String courseName, String courseDesc) throws IOException {
+        String systemPrompt = "你是一位高校计算机专业教师，擅长出题。请根据课程信息生成10道单项选择题，用于学生课后自测练习。\n" +
+                "要求：题目要真实准确，覆盖课程核心知识点，难度适中。\n" +
+                "你必须只返回纯JSON数组，不要加任何其他文字、解释或markdown标记。格式如下：\n" +
+                "[{\"id\":1,\"question\":\"题目内容\",\"options\":{\"A\":\"选项A\",\"B\":\"选项B\",\"C\":\"选项C\",\"D\":\"选项D\"},\"answer\":\"A\",\"explanation\":\"解析\"}]";
+
+        String userPrompt = "课程名称：" + courseName + "\n课程描述：" + courseDesc;
         return chat(systemPrompt, userPrompt);
     }
 }

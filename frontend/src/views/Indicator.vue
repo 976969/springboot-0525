@@ -12,11 +12,31 @@
         </div>
       </div>
     </template>
+    
+    <!-- 管理员筛选条件 -->
+    <div v-if="userRole === 'admin'" style="margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center">
+      <el-select 
+        v-model="filterTeacher" 
+        placeholder="选择教师" 
+        clearable 
+        style="width: 150px"
+        @change="() => { pageNum = 1; loadIndicators() }"
+      >
+        <el-option 
+          v-for="teacher in teacherList" 
+          :key="teacher.id" 
+          :label="teacher.realName" 
+          :value="teacher.id" 
+        />
+      </el-select>
+      <el-button @click="filterTeacher = ''; pageNum = 1; loadIndicators()">重置</el-button>
+    </div>
     <el-table :data="tableData" border stripe v-loading="loading">
       <!-- 序号列 -->
       <el-table-column type="index" label="序号" width="60" align="center" :index="(i) => (pageNum - 1) * pageSize + i + 1" />
       
       <el-table-column prop="name" label="指标名称" />
+      <el-table-column prop="teacherName" label="归属教师" v-if="userRole === 'admin'" />
       <el-table-column prop="category" label="分类" width="120" />
       <el-table-column label="权重" width="100" align="center">
         <template #default="{ row }">
@@ -152,6 +172,9 @@ import request from '../utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as echarts from 'echarts'
 
+const userRole = ref('')
+const teacherList = ref([])
+const filterTeacher = ref('')
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const tableData = ref([])
@@ -248,6 +271,16 @@ const defaultForm = {
 }
 const form = reactive({ ...defaultForm })
 
+// 加载教师列表
+const loadTeachers = async () => {
+  try {
+    const res = await request.get('/user/teacher/list')
+    teacherList.value = res.data || []
+  } catch (e) {
+    console.error('加载教师列表失败:', e)
+  }
+}
+
 // 加载评价指标
 const loadIndicators = async () => {
   loading.value = true
@@ -255,7 +288,8 @@ const loadIndicators = async () => {
     const res = await request.get('/indicator/page', {
       params: {
         pageNum: pageNum.value,
-        pageSize: pageSize.value
+        pageSize: pageSize.value,
+        teacherId: filterTeacher.value || undefined
       }
     })
     tableData.value = res.data.list || []
@@ -362,5 +396,12 @@ const handleDelete = async (id) => {
   }
 }
 
-onMounted(loadIndicators)
+onMounted(() => {
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+  userRole.value = userInfo.role
+  if (userRole.value === 'admin') {
+    loadTeachers()
+  }
+  loadIndicators()
+})
 </script>

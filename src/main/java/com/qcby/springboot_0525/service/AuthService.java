@@ -177,8 +177,8 @@ public class AuthService {
         }
 
         // 4. 密码长度校验
-        if (password == null || password.length() < 6) {
-            throw new BusinessException("密码长度不能少于6位");
+        if (password == null || password.length() < 4) {
+            throw new BusinessException("密码长度不能少于4位");
         }
 
         // 5. 创建学生记录

@@ -1,83 +1,81 @@
 package com.qcby.springboot_0525.controller;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.qcby.springboot_0525.common.Result;
-import com.qcby.springboot_0525.mapper.*;
+import com.qcby.springboot_0525.mapper.DashboardMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
 /**
- * 首页统计数据控制器
+ * 首页统计数据控制器（真实数据库查询）
  */
 @RestController
 @RequestMapping("/dashboard")
 public class DashboardController {
 
     @Autowired
-    private CourseMapper courseMapper;
+    private DashboardMapper dashboardMapper;
 
-    @Autowired
-    private TrainingTaskMapper taskMapper;
-
-    @Autowired
-    private TrainingResultMapper resultMapper;
-
-    @Autowired
-    private EvaluationReportMapper reportMapper;
-
-    @Autowired
-    private StudentMapper studentMapper;
-
-    @Autowired
-    private CourseStudentMapper courseStudentMapper;
+    /**
+     * 从 Sa-Token Session 中获取当前登录用户的真实ID
+     */
+    private Long getCurrentUserId() {
+        Object realIdObj = StpUtil.getSession().get("realId");
+        if (realIdObj == null) {
+            return null;
+        }
+        if (realIdObj instanceof Long) {
+            return (Long) realIdObj;
+        }
+        return Long.valueOf(realIdObj.toString());
+    }
 
     /**
      * 学生端首页统计数据
      */
     @GetMapping("/student/stats")
     public Result<Map<String, Object>> getStudentStats() {
+        Long studentId = getCurrentUserId();
+        if (studentId == null) {
+            return Result.fail(401, "未登录");
+        }
+
         Map<String, Object> stats = new HashMap<>();
-        
-        // 1. 我的课程数 - 查询当前学生选了多少门课
-        // TODO: 需要根据当前登录的学生ID查询
-        stats.put("courseCount", 3); // 临时数据
-        
-        // 2. 已完成任务数
-        stats.put("completedTaskCount", 8); // 临时数据
-        
-        // 3. 平均成绩
-        stats.put("averageScore", 85.6); // 临时数据
-        
-        // 4. 获得证书数(评价报告数)
-        stats.put("certificateCount", 5); // 临时数据
-        
+        stats.put("courseCount", dashboardMapper.countStudentCourses(studentId));
+        stats.put("completedTaskCount", dashboardMapper.countStudentCompletedTasks(studentId));
+        stats.put("averageScore", dashboardMapper.getStudentAverageScore(studentId));
+        stats.put("certificateCount", dashboardMapper.countStudentReports(studentId));
+
         return Result.success(stats);
     }
 
     /**
-     * 学生端-学习进度趋势(最近30天)
+     * 学生端-学习天数（从首次提交算起）
+     */
+    @GetMapping("/student/study-days")
+    public Result<Map<String, Object>> getStudentStudyDays() {
+        Long studentId = getCurrentUserId();
+        if (studentId == null) {
+            return Result.fail(401, "未登录");
+        }
+        int days = dashboardMapper.getStudentStudyDays(studentId);
+        Map<String, Object> data = new HashMap<>();
+        data.put("studyDays", days > 0 ? days : 1);
+        return Result.success(data);
+    }
+
+    /**
+     * 学生端-提交记录趋势(最近30天)
      */
     @GetMapping("/student/progress")
     public Result<List<Map<String, Object>>> getStudentProgress() {
-        List<Map<String, Object>> progressData = new ArrayList<>();
-        
-        // 生成最近30天的模拟数据
-        for (int i = 29; i >= 0; i--) {
-            Map<String, Object> data = new HashMap<>();
-            // 日期: 从今天往前推i天
-            Calendar cal = Calendar.getInstance();
-            cal.add(Calendar.DAY_OF_MONTH, -i);
-            data.put("date", String.format("%02d-%02d", 
-                cal.get(Calendar.MONTH) + 1, 
-                cal.get(Calendar.DAY_OF_MONTH)));
-            
-            // 学习时长: 随机60-180分钟
-            data.put("studyTime", 60 + new Random().nextInt(120));
-            
-            progressData.add(data);
+        Long studentId = getCurrentUserId();
+        if (studentId == null) {
+            return Result.success(new ArrayList<>());
         }
-        
+        List<Map<String, Object>> progressData = dashboardMapper.getStudentProgress30Days(studentId);
         return Result.success(progressData);
     }
 
@@ -86,20 +84,11 @@ public class DashboardController {
      */
     @GetMapping("/student/completion")
     public Result<List<Map<String, Object>>> getStudentCompletion() {
-        List<Map<String, Object>> completionData = new ArrayList<>();
-        
-        // 5门课程的完成情况
-        String[] courses = {"Java程序设计", "Web前端开发", "数据库原理", "软件工程", "移动应用开发"};
-        int[] completed = {4, 3, 3, 2, 2};
-        int[] total = {4, 3, 3, 2, 2};
-        
-        for (int i = 0; i < courses.length; i++) {
-            Map<String, Object> data = new HashMap<>();
-            data.put("name", courses[i]);
-            data.put("value", (int)((double)completed[i] / total[i] * 100));
-            completionData.add(data);
+        Long studentId = getCurrentUserId();
+        if (studentId == null) {
+            return Result.success(new ArrayList<>());
         }
-        
+        List<Map<String, Object>> completionData = dashboardMapper.getStudentCourseCompletion(studentId);
         return Result.success(completionData);
     }
 
@@ -108,12 +97,26 @@ public class DashboardController {
      */
     @GetMapping("/student/scores")
     public Result<Map<String, Object>> getStudentScores() {
+        Long studentId = getCurrentUserId();
+        if (studentId == null) {
+            Map<String, Object> empty = new HashMap<>();
+            empty.put("ranges", new ArrayList<>());
+            empty.put("counts", new ArrayList<>());
+            return Result.success(empty);
+        }
+        List<Map<String, Object>> distribution = dashboardMapper.getStudentScoreDistribution(studentId);
+
+        // 转换为前端需要的格式：ranges 和 counts
         Map<String, Object> scoreData = new HashMap<>();
-        
-        // 成绩区间分布
-        scoreData.put("ranges", Arrays.asList("90-100", "80-89", "70-79", "60-69", "<60"));
-        scoreData.put("counts", Arrays.asList(5, 8, 3, 0, 0));
-        
+        List<String> ranges = new ArrayList<>();
+        List<Integer> counts = new ArrayList<>();
+        for (Map<String, Object> item : distribution) {
+            ranges.add(String.valueOf(item.get("name")));
+            counts.add(((Number) item.get("value")).intValue());
+        }
+        scoreData.put("ranges", ranges);
+        scoreData.put("counts", counts);
+
         return Result.success(scoreData);
     }
 
@@ -122,21 +125,17 @@ public class DashboardController {
      */
     @GetMapping("/teacher/stats")
     public Result<Map<String, Object>> getTeacherStats() {
+        Long teacherId = getCurrentUserId();
+        if (teacherId == null) {
+            return Result.fail(401, "未登录");
+        }
+
         Map<String, Object> stats = new HashMap<>();
-        
-        // 1. 教授课程数 (查询所有课程)
-        stats.put("courseCount", 5); // 根据实际数据库
-        
-        // 2. 学生总数
-        stats.put("studentCount", 10); // 根据实际数据库
-        
-        // 3. 待批改任务数
-        // status=0 表示待核查
-        stats.put("pendingTasks", 5); // 临时数据
-        
-        // 4. 平均成绩
-        stats.put("averageScore", 85.2); // 临时数据
-        
+        stats.put("courseCount", dashboardMapper.countTeacherCourses(teacherId));
+        stats.put("studentCount", dashboardMapper.countTeacherStudents(teacherId));
+        stats.put("pendingTasks", dashboardMapper.countTeacherPendingTasks(teacherId));
+        stats.put("averageScore", dashboardMapper.getTeacherAverageScore(teacherId));
+
         return Result.success(stats);
     }
 
@@ -145,20 +144,11 @@ public class DashboardController {
      */
     @GetMapping("/teacher/students")
     public Result<List<Map<String, Object>>> getTeacherStudentStats() {
-        List<Map<String, Object>> studentData = new ArrayList<>();
-        
-        // 查询每门课程的学生人数
-        // 这里用模拟数据,实际应该查数据库
-        String[] courses = {"Java程序设计", "Web前端开发", "数据库原理", "软件工程", "移动应用开发"};
-        int[] counts = {3, 2, 5, 5, 6};
-        
-        for (int i = 0; i < courses.length; i++) {
-            Map<String, Object> data = new HashMap<>();
-            data.put("course", courses[i]);
-            data.put("students", counts[i]);
-            studentData.add(data);
+        Long teacherId = getCurrentUserId();
+        if (teacherId == null) {
+            return Result.success(new ArrayList<>());
         }
-        
+        List<Map<String, Object>> studentData = dashboardMapper.getTeacherCourseStudents(teacherId);
         return Result.success(studentData);
     }
 
@@ -167,23 +157,11 @@ public class DashboardController {
      */
     @GetMapping("/teacher/tasks")
     public Result<List<Map<String, Object>>> getTeacherTaskStats() {
-        List<Map<String, Object>> taskData = new ArrayList<>();
-        
-        // 生成最近7天的数据
-        for (int i = 6; i >= 0; i--) {
-            Map<String, Object> data = new HashMap<>();
-            Calendar cal = Calendar.getInstance();
-            cal.add(Calendar.DAY_OF_MONTH, -i);
-            data.put("date", String.format("%02d-%02d", 
-                cal.get(Calendar.MONTH) + 1, 
-                cal.get(Calendar.DAY_OF_MONTH)));
-            
-            // 提交数量: 随机5-20
-            data.put("submissions", 5 + new Random().nextInt(15));
-            
-            taskData.add(data);
+        Long teacherId = getCurrentUserId();
+        if (teacherId == null) {
+            return Result.success(new ArrayList<>());
         }
-        
+        List<Map<String, Object>> taskData = dashboardMapper.getTeacherTaskTrend7Days(teacherId);
         return Result.success(taskData);
     }
 
@@ -192,34 +170,76 @@ public class DashboardController {
      */
     @GetMapping("/teacher/scores")
     public Result<List<Map<String, Object>>> getTeacherScoreStats() {
-        List<Map<String, Object>> scoreData = new ArrayList<>();
-        
-        // 成绩分布
-        Map<String, Object> excellent = new HashMap<>();
-        excellent.put("name", "优秀(90-100)");
-        excellent.put("value", 8);
-        scoreData.add(excellent);
-        
-        Map<String, Object> good = new HashMap<>();
-        good.put("name", "良好(80-89)");
-        good.put("value", 15);
-        scoreData.add(good);
-        
-        Map<String, Object> medium = new HashMap<>();
-        medium.put("name", "中等(70-79)");
-        medium.put("value", 5);
-        scoreData.add(medium);
-        
-        Map<String, Object> pass = new HashMap<>();
-        pass.put("name", "及格(60-69)");
-        pass.put("value", 2);
-        scoreData.add(pass);
-        
-        Map<String, Object> fail = new HashMap<>();
-        fail.put("name", "不及格(<60)");
-        fail.put("value", 0);
-        scoreData.add(fail);
-        
+        Long teacherId = getCurrentUserId();
+        if (teacherId == null) {
+            return Result.success(new ArrayList<>());
+        }
+        List<Map<String, Object>> scoreData = dashboardMapper.getTeacherScoreDistribution(teacherId);
         return Result.success(scoreData);
+    }
+
+    // ============ 管理员端 ============
+
+    /**
+     * 管理员端首页统计数据
+     */
+    @GetMapping("/admin/stats")
+    public Result<Map<String, Object>> getAdminStats() {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("studentCount", dashboardMapper.countAllStudents());
+        stats.put("teacherCount", dashboardMapper.countAllTeachers());
+        stats.put("courseCount", dashboardMapper.countAllCourses());
+        stats.put("pendingResults", dashboardMapper.countPendingResults());
+        return Result.success(stats);
+    }
+
+    /**
+     * 管理员-近30天提交趋势
+     */
+    @GetMapping("/admin/progress")
+    public Result<List<Map<String, Object>>> getAdminProgress() {
+        return Result.success(dashboardMapper.getSystemProgress30Days());
+    }
+
+    /**
+     * 管理员-各课程选课人数
+     */
+    @GetMapping("/admin/enrollment")
+    public Result<List<Map<String, Object>>> getAdminEnrollment() {
+        return Result.success(dashboardMapper.getCourseEnrollment());
+    }
+
+    /**
+     * 管理员-成绩分布
+     */
+    @GetMapping("/admin/scores")
+    public Result<Map<String, Object>> getAdminScores() {
+        List<Map<String, Object>> distribution = dashboardMapper.getSystemScoreDistribution();
+        Map<String, Object> scoreData = new HashMap<>();
+        List<String> ranges = new ArrayList<>();
+        List<Integer> counts = new ArrayList<>();
+        for (Map<String, Object> item : distribution) {
+            ranges.add(String.valueOf(item.get("name")));
+            counts.add(((Number) item.get("value")).intValue());
+        }
+        scoreData.put("ranges", ranges);
+        scoreData.put("counts", counts);
+        return Result.success(scoreData);
+    }
+
+    /**
+     * 管理员-成果状态分布
+     */
+    @GetMapping("/admin/result-status")
+    public Result<List<Map<String, Object>>> getResultStatus() {
+        return Result.success(dashboardMapper.getResultStatusDistribution());
+    }
+
+    /**
+     * 管理员-最近提交记录
+     */
+    @GetMapping("/admin/recent")
+    public Result<List<Map<String, Object>>> getRecentSubmissions() {
+        return Result.success(dashboardMapper.getRecentSubmissions());
     }
 }

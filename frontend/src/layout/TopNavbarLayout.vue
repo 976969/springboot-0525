@@ -44,33 +44,31 @@
               <el-icon><List /></el-icon>
               <span>实训任务</span>
             </el-menu-item>
-            <el-menu-item v-if="role === 'teacher'" index="/check">
-              <el-icon><CircleCheck /></el-icon>
-              <span>智能核查</span>
-            </el-menu-item>
-            <el-menu-item v-if="role === 'teacher'" index="/evaluate">
-              <el-icon><Star /></el-icon>
-              <span>评价管理</span>
-            </el-menu-item>
             <el-menu-item v-if="role === 'teacher'" index="/indicator">
               <el-icon><SetUp /></el-icon>
               <span>评价指标</span>
+            </el-menu-item>
+            <el-menu-item v-if="role === 'teacher'" index="/evaluate">
+              <el-icon><Star /></el-icon>
+              <span>AI评分</span>
             </el-menu-item>
             <el-menu-item v-if="role === 'teacher'" index="/report">
               <el-icon><DataAnalysis /></el-icon>
               <span>报表中心</span>
             </el-menu-item>
 
-            <!-- 公共功能 -->
-            <el-menu-item index="/profile">
-              <el-icon><User /></el-icon>
-              <span>个人中心</span>
-            </el-menu-item>
-
             <!-- 学生专属功能 -->
+            <el-menu-item v-if="role === 'student'" index="/course-select">
+              <el-icon><Plus /></el-icon>
+              <span>选课中心</span>
+            </el-menu-item>
             <el-menu-item v-if="role === 'student'" index="/my-courses">
               <el-icon><Reading /></el-icon>
               <span>我的课程</span>
+            </el-menu-item>
+            <el-menu-item v-if="role === 'student'" index="/ai-practice">
+              <el-icon><EditPen /></el-icon>
+              <span>AI练习</span>
             </el-menu-item>
             <el-menu-item v-if="role === 'student'" index="/upload">
               <el-icon><Upload /></el-icon>
@@ -79,6 +77,12 @@
             <el-menu-item v-if="role === 'student'" index="/my-scores">
               <el-icon><Star /></el-icon>
               <span>我的成绩</span>
+            </el-menu-item>
+
+            <!-- 公共功能 -->
+            <el-menu-item index="/profile">
+              <el-icon><User /></el-icon>
+              <span>个人中心</span>
             </el-menu-item>
           </el-menu>
         </div>

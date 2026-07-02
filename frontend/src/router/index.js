@@ -21,7 +21,13 @@ const routes = [
         path: 'home',
         name: 'Home',
         component: () => import('../views/Home.vue'),
-        meta: { title: '首页', roles: ['student', 'admin'] }
+        meta: { title: '首页', roles: ['student'] }
+      },
+      {
+        path: 'admin-home',
+        name: 'AdminHome',
+        component: () => import('../views/AdminDashboard.vue'),
+        meta: { title: '系统总览', roles: ['admin'] }
       },
       {
         path: 'teacher-home',
@@ -48,10 +54,28 @@ const routes = [
         meta: { title: '我的课程', roles: ['student'] }
       },
       {
+        path: 'course-select',
+        name: 'CourseSelect',
+        component: () => import('../views/CourseSelect.vue'),
+        meta: { title: '选课中心', roles: ['student'] }
+      },
+      {
+        path: 'my-schedule',
+        name: 'MySchedule',
+        component: () => import('../views/MySchedule.vue'),
+        meta: { title: '我的课程表', roles: ['student'] }
+      },
+      {
         path: 'my-scores',
         name: 'MyScores',
         component: () => import('../views/MyScores.vue'),
         meta: { title: '我的成绩', roles: ['student'] }
+      },
+      {
+        path: 'ai-practice',
+        name: 'AiPractice',
+        component: () => import('../views/AiPractice.vue'),
+        meta: { title: 'AI练习', roles: ['student'] }
       },
       {
         path: 'course',
@@ -70,12 +94,6 @@ const routes = [
         name: 'Upload',
         component: () => import('../views/Upload.vue'),
         meta: { title: '成果上传', roles: ['student'] }
-      },
-      {
-        path: 'check',
-        name: 'Check',
-        component: () => import('../views/Check.vue'),
-        meta: { title: '智能核查', roles: ['admin', 'teacher'] }
       },
       {
         path: 'evaluate',
@@ -100,6 +118,12 @@ const routes = [
         name: 'BannerManage',
         component: () => import('../views/BannerManage.vue'),
         meta: { title: '大屏管理', roles: ['admin'] }
+      },
+      {
+        path: 'schedule-manage',
+        name: 'ScheduleManage',
+        component: () => import('../views/ScheduleManage.vue'),
+        meta: { title: '课程表管理', roles: ['admin'] }
       }
     ]
   }
@@ -125,6 +149,8 @@ router.beforeEach(async (to, from, next) => {
       // 有token,根据角色跳转到对应首页
       if (userRole === 'teacher') {
         next('/teacher-home')
+      } else if (userRole === 'admin') {
+        next('/admin-home')
       } else {
         next('/home')
       }
@@ -146,6 +172,8 @@ router.beforeEach(async (to, from, next) => {
   if (token && to.path === '/login') {
     if (userRole === 'teacher') {
       next('/teacher-home')
+    } else if (userRole === 'admin') {
+      next('/admin-home')
     } else {
       next('/home')
     }
@@ -188,9 +216,9 @@ router.beforeEach(async (to, from, next) => {
           next() // 已经在学生首页,允许访问
         }
       } else if (userRole === 'admin') {
-        // 管理员默认跳转到首页
-        if (to.path !== '/home') {
-          next('/home')
+        // 管理员跳转到系统总览
+        if (to.path !== '/admin-home') {
+          next('/admin-home')
         } else {
           next()
         }

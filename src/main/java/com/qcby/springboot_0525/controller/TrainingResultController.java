@@ -42,21 +42,22 @@ public class TrainingResultController {
             @RequestParam(required = false) Long studentId,
             @RequestParam(required = false) Long taskId,
             @RequestParam(required = false) Integer status,
-            @RequestParam(required = false) String fileName) {
+            @RequestParam(required = false) String fileName,
+            @RequestParam(required = false) Long teacherId) {
         
         // 根据角色过滤数据
         String role = (String) StpUtil.getSession().get("role");
         Object realIdObj = StpUtil.getSession().get("realId");
         
-        log.info("查询成果列表 - 角色: {}, realId: {}, 筛选条件: studentId={}, taskId={}, status={}, fileName={}", 
-                role, realIdObj, studentId, taskId, status, fileName);
+        log.info("查询成果列表 - 角色: {}, realId: {}, 筛选条件: studentId={}, taskId={}, status={}, fileName={}, teacherId={}", 
+                role, realIdObj, studentId, taskId, status, fileName, teacherId);
         
         List<TrainingResult> list;
         if ("teacher".equals(role) && realIdObj != null) {
             // 教师只能看到自己课程相关的成果
-            Long teacherId = Long.valueOf(realIdObj.toString());
-            log.info("教师ID: {}", teacherId);
-            list = resultService.listByTeacherId(teacherId);
+            Long tid = Long.valueOf(realIdObj.toString());
+            log.info("教师ID: {}", tid);
+            list = resultService.listByTeacherId(tid);
             log.info("教师查询到 {} 条成果", list.size());
         } else if ("student".equals(role)) {
             // 学生只能看到自己的成果
@@ -66,6 +67,12 @@ public class TrainingResultController {
             // 管理员看到所有成果
             list = resultService.list();
             log.info("管理员查询到 {} 条成果", list.size());
+        }
+        
+        // 管理员可按教师筛选
+        if (teacherId != null && "admin".equals(role)) {
+            list = list.stream().filter(r -> teacherId.equals(r.getTeacherId())).collect(Collectors.toList());
+            log.info("按教师筛选后: {} 条", list.size());
         }
         
         // 应用筛选条件过滤(在分页之前)

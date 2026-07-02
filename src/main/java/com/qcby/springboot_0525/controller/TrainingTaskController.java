@@ -12,6 +12,7 @@ import javax.annotation.Resource;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 实训任务控制器（任务管理、过期状态判断、权限过滤）
@@ -28,7 +29,8 @@ public class TrainingTaskController {
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false) String sortField,
-            @RequestParam(required = false) String sortOrder) {
+            @RequestParam(required = false) String sortOrder,
+            @RequestParam(required = false) Long teacherId) {
         
         // 根据角色过滤数据
         String role = (String) StpUtil.getSession().get("role");
@@ -36,12 +38,17 @@ public class TrainingTaskController {
         
         List<TrainingTask> list;
         if ("teacher".equals(role) && realIdObj != null) {
-            Long teacherId = Long.valueOf(realIdObj.toString());
-            list = taskService.listByTeacherId(teacherId);
+            Long tid = Long.valueOf(realIdObj.toString());
+            list = taskService.listByTeacherId(tid);
         } else if ("student".equals(role)) {
             list = taskService.listActive();
         } else {
             list = taskService.list();
+        }
+        
+        // 管理员可按教师筛选
+        if (teacherId != null && "admin".equals(role)) {
+            list = list.stream().filter(t -> teacherId.equals(t.getTeacherId())).collect(Collectors.toList());
         }
         
         // 动态判断过期状态
@@ -52,7 +59,7 @@ public class TrainingTaskController {
             }
         }
         
-        // 应用排序
+        // 应用排序（默认：进行中优先，过期任务按截止时间升序）
         if (sortField != null && !sortField.isEmpty() && sortOrder != null && !sortOrder.isEmpty()) {
             boolean asc = "asc".equalsIgnoreCase(sortOrder);
             Comparator<TrainingTask> comparator = null;
@@ -71,6 +78,12 @@ public class TrainingTaskController {
             if (comparator != null) {
                 list.sort(comparator);
             }
+        } else {
+            // 默认排序：进行中(status=1)优先，过期任务按截止时间升序
+            list.sort(Comparator
+                .comparing((TrainingTask t) -> t.getStatus() != 1 ? 1 : 0)
+                .thenComparing(TrainingTask::getDeadline, Comparator.nullsLast(Comparator.naturalOrder()))
+            );
         }
         
         // 手动分页
@@ -90,11 +103,7 @@ public class TrainingTaskController {
 
     @GetMapping("/list")
     public Result<List<TrainingTask>> listAll() {
-        // 学生只能看到未过期的任务
-        String role = (String) StpUtil.getSession().get("role");
-        if ("student".equals(role)) {
-            return Result.success(taskService.listActive());
-        }
+        // 学生也能看到已过期的任务（前端会标记并禁止选择）
         return Result.success(taskService.list());
     }
 
@@ -126,6 +135,12 @@ public class TrainingTaskController {
         if (!"teacher".equals(role) && !"admin".equals(role)) {
             throw new BusinessException(403, "无权限编辑任务");
         }
+        
+        // 如果截止时间在未来，自动将状态重置为进行中(1)
+        if (task.getDeadline() != null && task.getDeadline().after(new Date())) {
+            task.setStatus(1);
+        }
+        
         taskService.update(task);
         return Result.success();
     }

@@ -21,6 +21,11 @@ public class ClassScheduleService {
         return scheduleMapper.selectByTeacherId(teacherId);
     }
 
+    /** 根据学生ID查询其已选课程的安排 */
+    public List<ClassSchedule> listByStudentId(Long studentId) {
+        return scheduleMapper.selectByStudentId(studentId);
+    }
+
     /** 查询所有课程安排 */
     public List<ClassSchedule> listAll() {
         return scheduleMapper.selectAll();
