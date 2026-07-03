@@ -9,9 +9,13 @@ import com.qcby.springboot_0525.common.BusinessException;
 import com.qcby.springboot_0525.common.PageResult;
 import com.qcby.springboot_0525.common.Result;
 import com.qcby.springboot_0525.entity.Admin;
+import com.qcby.springboot_0525.entity.Course;
 import com.qcby.springboot_0525.entity.CourseStudent;
 import com.qcby.springboot_0525.entity.Student;
 import com.qcby.springboot_0525.entity.Teacher;
+import com.qcby.springboot_0525.entity.ClassSchedule;
+import com.qcby.springboot_0525.mapper.ClassScheduleMapper;
+import com.qcby.springboot_0525.mapper.CourseMapper;
 import com.qcby.springboot_0525.service.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -66,6 +70,12 @@ public class UserController {
 
     @Resource
     private CourseStudentService courseStudentService;
+
+    @Resource
+    private CourseMapper courseMapper;
+
+    @Resource
+    private ClassScheduleMapper scheduleMapper;
 
     // ==================== 管理员功能 ====================
 
@@ -469,5 +479,87 @@ public class UserController {
         List<CourseStudent> list = courseStudentService.getCoursesByStudentId(realId);
         PageInfo<CourseStudent> pageInfo = new PageInfo<>(list);
         return Result.success(PageResult.of(pageInfo.getList(), pageInfo.getTotal(), pageNum, pageSize));
+    }
+
+    // ==================== 学生选课功能 ====================
+
+    /**
+     * 获取所有可选课程（按课程名分组，显示每个课程的授课教师）
+     * 学生选课专用：先选课程名，再选教师
+     */
+    @GetMapping("/available-courses")
+    public Result<List<Map<String, Object>>> getAvailableCourses() {
+        List<Course> allCourses = courseMapper.selectList();
+        // 按课程名分组
+        Map<String, List<Course>> grouped = new java.util.LinkedHashMap<>();
+        for (Course c : allCourses) {
+            if (c.getStatus() != null && c.getStatus() == 0) continue; // 跳过停用课程
+            grouped.computeIfAbsent(c.getName(), k -> new java.util.ArrayList<>()).add(c);
+        }
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        for (Map.Entry<String, List<Course>> entry : grouped.entrySet()) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("courseName", entry.getKey());
+            // 取第一条的描述作为课程描述
+            Course first = entry.getValue().get(0);
+            item.put("description", first.getDescription());
+            item.put("teacherCount", entry.getValue().size());
+            // 查询该课程所有班次的上课信息
+            List<Map<String, Object>> scheduleInfo = new java.util.ArrayList<>();
+            for (Course c : entry.getValue()) {
+                List<ClassSchedule> schedules = scheduleMapper.selectByCourseId(c.getId());
+                for (ClassSchedule s : schedules) {
+                    Map<String, Object> info = new HashMap<>();
+                    info.put("teacherName", c.getTeacherName());
+                    info.put("dayOfWeek", s.getDayOfWeek());
+                    info.put("startTime", s.getStartTime());
+                    info.put("endTime", s.getEndTime());
+                    info.put("location", s.getLocation());
+                    scheduleInfo.add(info);
+                }
+            }
+            item.put("scheduleInfo", scheduleInfo);
+            item.put("sections", entry.getValue()); // 该课程的所有教师班次
+            result.add(item);
+        }
+        return Result.success(result);
+    }
+
+    /**
+     * 学生选课（根据课程ID选课，课程ID对应具体教师的班次）
+     */
+    @PostMapping("/enroll-course")
+    public Result<Void> enrollCourse(@RequestBody Map<String, Long> params) {
+        Long studentId = getRealIdFromSession();
+        if (studentId == null) {
+            return Result.fail("用户信息获取失败");
+        }
+        String role = (String) StpUtil.getSession().get("role");
+        if (!"student".equals(role)) {
+            throw new BusinessException(403, "只有学生可以选课");
+        }
+        Long courseId = params.get("courseId");
+        if (courseId == null) {
+            throw new BusinessException(400, "课程ID不能为空");
+        }
+        courseStudentService.addStudentToCourse(courseId, studentId);
+        return Result.success();
+    }
+
+    /**
+     * 学生退课
+     */
+    @DeleteMapping("/enroll-course")
+    public Result<Void> dropCourse(@RequestParam Long courseId) {
+        Long studentId = getRealIdFromSession();
+        if (studentId == null) {
+            return Result.fail("用户信息获取失败");
+        }
+        String role = (String) StpUtil.getSession().get("role");
+        if (!"student".equals(role)) {
+            throw new BusinessException(403, "只有学生可以退课");
+        }
+        courseStudentService.removeStudentFromCourse(courseId, studentId);
+        return Result.success();
     }
 }

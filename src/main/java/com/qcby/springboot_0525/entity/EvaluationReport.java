@@ -15,8 +15,14 @@ public class EvaluationReport {
     private Long taskId;
     /** 学生ID */
     private Long studentId;
-    /** 总分 */
+    /** 总分（AI加权得分） */
     private BigDecimal totalScore;
+    /** 教师评分（整体评分） */
+    private BigDecimal teacherScore;
+    /** 教师评分占比（0-10，表示AI评分占比） */
+    private BigDecimal teacherScoreRatio;
+    /** 评分教师ID */
+    private Long teacherId;
     /** 报告数据（JSON格式） */
     private String reportData;
     /** 导出格式 */
@@ -30,4 +36,6 @@ public class EvaluationReport {
     private String taskTitle;
     /** 关联查询字段：文件名 */
     private String fileName;
+    /** 关联查询字段：教师姓名 */
+    private String teacherName;
 }

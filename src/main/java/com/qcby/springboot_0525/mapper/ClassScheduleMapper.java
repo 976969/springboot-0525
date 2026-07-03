@@ -15,6 +15,12 @@ public interface ClassScheduleMapper {
     /** 根据教师ID查询课程安排列表 */
     List<ClassSchedule> selectByTeacherId(@Param("teacherId") Long teacherId);
 
+    /** 根据课程ID查询课程安排列表 */
+    List<ClassSchedule> selectByCourseId(@Param("courseId") Long courseId);
+
+    /** 根据学生ID查询其已选课程的安排列表 */
+    List<ClassSchedule> selectByStudentId(@Param("studentId") Long studentId);
+
     /** 查询所有课程安排 */
     List<ClassSchedule> selectAll();
 

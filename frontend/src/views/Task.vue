@@ -10,11 +10,31 @@
           <el-button type="primary" @click="dialogVisible = true">发布任务</el-button>
         </div>
       </template>
+      
+      <!-- 管理员筛选条件 -->
+      <div v-if="userRole === 'admin'" style="margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center">
+        <el-select 
+          v-model="filterTeacher" 
+          placeholder="选择教师" 
+          clearable 
+          style="width: 150px"
+          @change="() => { pageNum = 1; loadTasks() }"
+        >
+          <el-option 
+            v-for="teacher in teacherList" 
+            :key="teacher.id" 
+            :label="teacher.realName" 
+            :value="teacher.id" 
+          />
+        </el-select>
+        <el-button @click="filterTeacher = ''; pageNum = 1; loadTasks()">重置</el-button>
+      </div>
       <el-table :data="tableData" border stripe v-loading="loading" @sort-change="handleSortChange">
         <!-- 序号列 -->
         <el-table-column type="index" label="序号" width="60" align="center" :index="(i) => (pageNum - 1) * pageSize + i + 1" />
         
         <el-table-column prop="courseName" label="所属课程" sortable="custom" />
+        <el-table-column prop="teacherName" label="授课教师" v-if="userRole === 'admin'" />
         <el-table-column prop="title" label="任务标题" />
         <el-table-column prop="deadline" label="截止时间" width="180" sortable="custom" />
         <el-table-column prop="status" label="状态" width="120">
@@ -84,6 +104,9 @@ import { ref, reactive, onMounted } from 'vue'
 import request from '../utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
+const userRole = ref('')
+const teacherList = ref([])
+const filterTeacher = ref('')
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const isView = ref(false) // 查看模式
@@ -104,6 +127,16 @@ const form = reactive({
   deadline: '' 
 })
 
+// 加载教师列表
+const loadTeachers = async () => {
+  try {
+    const res = await request.get('/user/teacher/list')
+    teacherList.value = res.data || []
+  } catch (e) {
+    console.error('加载教师列表失败:', e)
+  }
+}
+
 // 加载课程列表
 const loadCourses = async () => {
   try {
@@ -123,7 +156,8 @@ const loadTasks = async () => {
         pageNum: pageNum.value,
         pageSize: pageSize.value,
         sortField: sortField.value || undefined,
-        sortOrder: sortOrder.value || undefined
+        sortOrder: sortOrder.value || undefined,
+        teacherId: filterTeacher.value || undefined
       }
     })
     tableData.value = res.data.list || []
@@ -212,6 +246,11 @@ const handleSortChange = ({ prop, order }) => {
 }
 
 onMounted(async () => {
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+  userRole.value = userInfo.role
+  if (userRole.value === 'admin') {
+    await loadTeachers()
+  }
   await loadCourses() // 先加载课程列表
   await loadTasks()   // 再加载任务列表
 })

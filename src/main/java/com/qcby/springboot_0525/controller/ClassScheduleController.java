@@ -4,6 +4,8 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.qcby.springboot_0525.common.BusinessException;
 import com.qcby.springboot_0525.common.Result;
 import com.qcby.springboot_0525.entity.ClassSchedule;
+import com.qcby.springboot_0525.entity.Course;
+import com.qcby.springboot_0525.mapper.CourseMapper;
 import com.qcby.springboot_0525.service.ClassScheduleService;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +22,9 @@ public class ClassScheduleController {
     @Resource
     private ClassScheduleService scheduleService;
 
+    @Resource
+    private CourseMapper courseMapper;
+
     @GetMapping("/list")
     public Result<List<ClassSchedule>> list() {
         String role = (String) StpUtil.getSession().get("role");
@@ -29,6 +34,31 @@ public class ClassScheduleController {
         if ("teacher".equals(role) && realIdObj != null) {
             Long teacherId = Long.valueOf(realIdObj.toString());
             list = scheduleService.listByTeacherId(teacherId);
+        } else if ("student".equals(role) && realIdObj != null) {
+            Long studentId = Long.valueOf(realIdObj.toString());
+            list = scheduleService.listByStudentId(studentId);
+        } else {
+            list = scheduleService.listAll();
+        }
+        return Result.success(list);
+    }
+
+    /**
+     * 管理员专用：根据角色和用户ID查询课程表
+     * @param role teacher 或 student
+     * @param userId 教师ID或学生ID
+     */
+    @GetMapping("/user")
+    public Result<List<ClassSchedule>> listByUser(@RequestParam String role, @RequestParam Long userId) {
+        String adminRole = (String) StpUtil.getSession().get("role");
+        if (!"admin".equals(adminRole)) {
+            throw new BusinessException(403, "无权限访问");
+        }
+        List<ClassSchedule> list;
+        if ("teacher".equals(role)) {
+            list = scheduleService.listByTeacherId(userId);
+        } else if ("student".equals(role)) {
+            list = scheduleService.listByStudentId(userId);
         } else {
             list = scheduleService.listAll();
         }
@@ -51,6 +81,15 @@ public class ClassScheduleController {
         Object realIdObj = StpUtil.getSession().get("realId");
         if ("teacher".equals(role) && realIdObj != null) {
             schedule.setTeacherId(Long.valueOf(realIdObj.toString()));
+        }
+
+        // 管理员或教师：根据课程自动填充 teacherId（以课程的负责教师为准）
+        if (schedule.getCourseId() != null) {
+            Course course = courseMapper.selectById(schedule.getCourseId());
+            if (course == null) {
+                throw new BusinessException(400, "课程不存在");
+            }
+            schedule.setTeacherId(course.getTeacherId());
         }
 
         scheduleService.add(schedule);

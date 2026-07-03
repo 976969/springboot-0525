@@ -39,4 +39,10 @@ public class TrainingResult {
     private Long courseId;
     /** 关联查询字段：课程名称 */
     private String courseName;
+
+    /** 关联查询字段：教师ID */
+    private Long teacherId;
+
+    /** 关联查询字段：教师名称 */
+    private String teacherName;
 }

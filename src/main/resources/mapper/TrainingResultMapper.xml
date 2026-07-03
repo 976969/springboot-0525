@@ -18,63 +18,71 @@
         <result column="task_title" property="taskTitle"/>
         <result column="course_id" property="courseId"/>
         <result column="course_name" property="courseName"/>
+        <result column="teacher_id" property="teacherId"/>
+        <result column="teacher_name" property="teacherName"/>
     </resultMap>
 
     <select id="selectById" resultMap="BaseResultMap">
-        SELECT r.*, u.real_name AS student_name, t.title AS task_title, t.course_id AS course_id, c.name AS course_name
+        SELECT r.*, u.real_name AS student_name, t.title AS task_title, t.course_id, c.name AS course_name, c.teacher_id, te.real_name AS teacher_name
         FROM training_result r
         LEFT JOIN student u ON r.student_id = u.id
         LEFT JOIN training_task t ON r.task_id = t.id
         LEFT JOIN course c ON t.course_id = c.id
+        LEFT JOIN teacher te ON c.teacher_id = te.id
         WHERE r.id = #{id}
     </select>
 
     <select id="selectList" resultMap="BaseResultMap">
-        SELECT r.*, u.real_name AS student_name, t.title AS task_title, t.course_id AS course_id, c.name AS course_name
+        SELECT r.*, u.real_name AS student_name, t.title AS task_title, t.course_id, c.name AS course_name, c.teacher_id, te.real_name AS teacher_name
         FROM training_result r
         LEFT JOIN student u ON r.student_id = u.id
         LEFT JOIN training_task t ON r.task_id = t.id
         LEFT JOIN course c ON t.course_id = c.id
+        LEFT JOIN teacher te ON c.teacher_id = te.id
         ORDER BY r.id DESC
     </select>
 
     <select id="selectByTaskId" resultMap="BaseResultMap">
-        SELECT r.*, u.real_name AS student_name, t.title AS task_title, t.course_id AS course_id, c.name AS course_name
+        SELECT r.*, u.real_name AS student_name, t.title AS task_title, t.course_id, c.name AS course_name, c.teacher_id, te.real_name AS teacher_name
         FROM training_result r
         LEFT JOIN student u ON r.student_id = u.id
         LEFT JOIN training_task t ON r.task_id = t.id
         LEFT JOIN course c ON t.course_id = c.id
+        LEFT JOIN teacher te ON c.teacher_id = te.id
         WHERE r.task_id = #{taskId}
         ORDER BY r.id DESC
     </select>
 
     <select id="selectByStudentId" resultMap="BaseResultMap">
-        SELECT r.*, u.real_name AS student_name, t.title AS task_title, t.course_id AS course_id, c.name AS course_name
+        SELECT r.*, u.real_name AS student_name, t.title AS task_title, t.course_id, c.name AS course_name, c.teacher_id, te.real_name AS teacher_name
         FROM training_result r
         LEFT JOIN student u ON r.student_id = u.id
         LEFT JOIN training_task t ON r.task_id = t.id
         LEFT JOIN course c ON t.course_id = c.id
+        LEFT JOIN teacher te ON c.teacher_id = te.id
         WHERE r.student_id = #{studentId}
         ORDER BY r.id DESC
     </select>
 
     <select id="selectByTaskAndStudent" resultMap="BaseResultMap">
-        SELECT r.*, u.real_name AS student_name, t.title AS task_title, t.course_id AS course_id, c.name AS course_name
+        SELECT r.*, u.real_name AS student_name, t.title AS task_title, t.course_id, c.name AS course_name, c.teacher_id, te.real_name AS teacher_name
         FROM training_result r
         LEFT JOIN student u ON r.student_id = u.id
         LEFT JOIN training_task t ON r.task_id = t.id
         LEFT JOIN course c ON t.course_id = c.id
+        LEFT JOIN teacher te ON c.teacher_id = te.id
         WHERE r.task_id = #{taskId} AND r.student_id = #{studentId}
         ORDER BY r.upload_time DESC
         LIMIT 1
     </select>
 
     <select id="selectByTeacherId" resultMap="BaseResultMap">
-        SELECT r.*, u.real_name AS student_name, t.title AS task_title, t.course_id AS course_id, c.name AS course_name
+        SELECT r.*, u.real_name AS student_name, t.title AS task_title, t.course_id, c.name AS course_name, c.teacher_id, te.real_name AS teacher_name
         FROM training_result r
         LEFT JOIN student u ON r.student_id = u.id
         LEFT JOIN training_task t ON r.task_id = t.id
         LEFT JOIN course c ON t.course_id = c.id
+        LEFT JOIN teacher te ON c.teacher_id = te.id
         WHERE c.teacher_id = #{teacherId}
         ORDER BY r.id DESC
     </select>

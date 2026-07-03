@@ -120,7 +120,7 @@
             </div>
           </template>
           <el-row :gutter="15" style="margin-top: 20px">
-            <el-col :span="8">
+            <el-col :span="12">
               <el-button type="primary" plain @click="$router.push('/course')" style="width: 100%; height: 80px">
                 <div style="text-align: center">
                   <div style="font-size: 24px">📚</div>
@@ -128,19 +128,11 @@
                 </div>
               </el-button>
             </el-col>
-            <el-col :span="8">
+            <el-col :span="12">
               <el-button type="success" plain @click="$router.push('/task')" style="width: 100%; height: 80px">
                 <div style="text-align: center">
                   <div style="font-size: 24px">✅</div>
                   <div>实训任务</div>
-                </div>
-              </el-button>
-            </el-col>
-            <el-col :span="8">
-              <el-button type="warning" plain @click="$router.push('/check')" style="width: 100%; height: 80px">
-                <div style="text-align: center">
-                  <div style="font-size: 24px">🔍</div>
-                  <div>智能核查</div>
                 </div>
               </el-button>
             </el-col>

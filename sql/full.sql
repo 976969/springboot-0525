@@ -4,8 +4,8 @@
 -- 使用方式: 在MySQL中直接执行本文件即可一键完成建库+建表+插入数据
 -- 共14张表: admin, teacher, student, course, course_student,
 --   training_task, training_result, evaluation_indicator,
---   evaluation_record, evaluation_report, check_record,
---   class_schedule, banner, verification_code
+--   evaluation_record, evaluation_report,
+--   class_schedule, banner, verification_code, ai_practice
 -- ============================================================
 
 -- 创建数据库(如不存在)
@@ -125,7 +125,7 @@ CREATE TABLE `training_task` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='实训任务表';
 
 
--- ==================== 三、成果与评价相关表(5张) ====================
+-- ==================== 三、成果与评价相关表(4张) ====================
 
 -- 7. 实训成果表
 DROP TABLE IF EXISTS `training_result`;
@@ -185,36 +185,24 @@ CREATE TABLE `evaluation_record` (
 -- 10. 评价报告表
 DROP TABLE IF EXISTS `evaluation_report`;
 CREATE TABLE `evaluation_report` (
-    `id`            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
-    `task_id`       BIGINT       NOT NULL                COMMENT '任务ID',
-    `student_id`    BIGINT       NOT NULL                COMMENT '学生ID(关联student表)',
-    `total_score`   DECIMAL(5,2) DEFAULT NULL            COMMENT '总评分',
-    `report_data`   TEXT                                 COMMENT '报告数据(JSON)',
-    `export_format` VARCHAR(10)  DEFAULT NULL            COMMENT '导出格式: excel/pdf',
-    `create_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `id`                BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `task_id`           BIGINT       NOT NULL                COMMENT '任务ID',
+    `student_id`        BIGINT       NOT NULL                COMMENT '学生ID(关联student表)',
+    `total_score`       DECIMAL(5,2) DEFAULT NULL            COMMENT '总评分',
+    `teacher_score`     DECIMAL(5,2) DEFAULT NULL            COMMENT '教师评分',
+    `teacher_score_ratio` DECIMAL(3,1) DEFAULT 5.0           COMMENT '教师评分比重',
+    `teacher_id`        BIGINT       DEFAULT NULL            COMMENT '教师ID',
+    `report_data`       TEXT                                 COMMENT '报告数据(JSON)',
+    `export_format`     VARCHAR(10)  DEFAULT NULL            COMMENT '导出格式: excel/pdf',
+    `create_time`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (`id`),
     KEY `idx_task_id`    (`task_id`),
     KEY `idx_student_id` (`student_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评价报告表';
 
--- 11. 核查记录表
-DROP TABLE IF EXISTS `check_record`;
-CREATE TABLE `check_record` (
-    `id`                BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
-    `result_id`         BIGINT      NOT NULL                COMMENT '实训成果ID',
-    `check_type`        VARCHAR(50) NOT NULL                COMMENT '核查类型: completeness/logic/match',
-    `check_result`      TINYINT     NOT NULL DEFAULT 0      COMMENT '核查结果: 0待核查 1通过 2存在问题',
-    `issue_description` TEXT                                COMMENT '问题描述',
-    `suggestion`        TEXT                                COMMENT '改进建议',
-    `create_time`       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    PRIMARY KEY (`id`),
-    KEY `idx_result_id` (`result_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='核查记录表';
+-- ==================== 四、其他表(4张) ====================
 
-
--- ==================== 四、其他表(2张) ====================
-
--- 12. 课程表(上课时间安排)
+-- 11. 课程表(上课时间安排)
 DROP TABLE IF EXISTS `class_schedule`;
 CREATE TABLE `class_schedule` (
     `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -233,7 +221,7 @@ CREATE TABLE `class_schedule` (
     KEY `idx_day_of_week` (`day_of_week`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程表(上课时间安排)';
 
--- 13. 轮播图表
+-- 12. 轮播图表
 DROP TABLE IF EXISTS `banner`;
 CREATE TABLE `banner` (
     `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -248,7 +236,7 @@ CREATE TABLE `banner` (
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='轮播图表';
 
--- 14. 验证码表
+-- 13. 验证码表
 DROP TABLE IF EXISTS `verification_code`;
 CREATE TABLE `verification_code` (
     `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -261,6 +249,23 @@ CREATE TABLE `verification_code` (
     PRIMARY KEY (`id`),
     KEY `idx_target` (`target`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='验证码表';
+
+-- 14. AI练习题表
+DROP TABLE IF EXISTS `ai_practice`;
+CREATE TABLE `ai_practice` (
+    `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `student_id`  BIGINT       NOT NULL                COMMENT '学生ID',
+    `course_id`   BIGINT       NOT NULL                COMMENT '课程ID',
+    `course_name` VARCHAR(100) NOT NULL                COMMENT '课程名称',
+    `questions`   TEXT         NOT NULL                COMMENT '题目数据(JSON数组)',
+    `answers`     TEXT         DEFAULT NULL            COMMENT '学生答案(JSON)',
+    `score`       DECIMAL(5,2) DEFAULT NULL            COMMENT '得分',
+    `total_score` DECIMAL(5,2) DEFAULT 100.00          COMMENT '总分',
+    `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_student_id` (`student_id`),
+    KEY `idx_course_id` (`course_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI练习题表';
 
 
 -- ================================================================
@@ -414,15 +419,7 @@ INSERT INTO `training_result` (`task_id`, `student_id`, `file_path`, `file_name`
 (11, 10, 'uploads/result/task11_student10.docx', 'Activity生命周期_孙同学.docx', 'docx', 98765,  '2026-06-03 15:00:00', 1);
 
 
--- ==================== 六、核查记录 ====================
-
-INSERT INTO `check_record` (`result_id`, `check_type`, `check_result`, `issue_description`, `suggestion`) VALUES
-(4, 'completeness', 1, '', '文档结构完整，包含系统概述、功能模块、技术实现等必要章节'),
-(4, 'logic',        1, '', '逻辑清晰，从设计理念到技术实现层层递进'),
-(4, 'match',        1, '', '完全符合响应式设计要求');
-
-
--- ==================== 七、评价记录 ====================
+-- ==================== 六、评价记录 ====================
 
 -- 成果ID=4: 陈同学_响应式网页设计 (含AI评语和教师评语)
 INSERT INTO `evaluation_record` (`result_id`, `indicator_id`, `ai_score`, `teacher_score`, `final_score`, `score_ratio`, `ai_comment`, `teacher_comment`) VALUES
@@ -522,14 +519,14 @@ UNION ALL SELECT '实训成果',   COUNT(*) FROM `training_result`
 UNION ALL SELECT '评价指标',   COUNT(*) FROM `evaluation_indicator`
 UNION ALL SELECT '评价记录',   COUNT(*) FROM `evaluation_record`
 UNION ALL SELECT '评价报告',   COUNT(*) FROM `evaluation_report`
-UNION ALL SELECT '核查记录',   COUNT(*) FROM `check_record`
 UNION ALL SELECT '课程表',     COUNT(*) FROM `class_schedule`
 UNION ALL SELECT '轮播图',     COUNT(*) FROM `banner`
-UNION ALL SELECT '验证码',     COUNT(*) FROM `verification_code`;
+UNION ALL SELECT '验证码',     COUNT(*) FROM `verification_code`
+UNION ALL SELECT 'AI练习题',   COUNT(*) FROM `ai_practice`;
 
 -- ============================================================
 -- 完整版脚本执行完毕!
--- 共13张表, 全部数据已就绪
+-- 共14张表, 全部数据已就绪
 -- 
 -- 登录账号:
 --   管理员: admin / admin123
@@ -660,7 +657,7 @@ CREATE TABLE `training_task` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='实训任务表';
 
 
--- ==================== 三、成果与评价相关表(5张) ====================
+-- ==================== 三、成果与评价相关表(4张) ====================
 
 -- 7. 实训成果表
 DROP TABLE IF EXISTS `training_result`;
@@ -719,34 +716,24 @@ CREATE TABLE `evaluation_record` (
 -- 10. 评价报告表
 DROP TABLE IF EXISTS `evaluation_report`;
 CREATE TABLE `evaluation_report` (
-    `id`            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
-    `task_id`       BIGINT       NOT NULL                COMMENT '任务ID',
-    `student_id`    BIGINT       NOT NULL                COMMENT '学生ID(关联student表)',
-    `total_score`   DECIMAL(5,2) DEFAULT NULL            COMMENT '总评分',
-    `report_data`   TEXT                                 COMMENT '报告数据(JSON)',
-    `export_format` VARCHAR(10)  DEFAULT NULL            COMMENT '导出格式: excel/pdf',
-    `create_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `id`                BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `task_id`           BIGINT       NOT NULL                COMMENT '任务ID',
+    `student_id`        BIGINT       NOT NULL                COMMENT '学生ID(关联student表)',
+    `total_score`       DECIMAL(5,2) DEFAULT NULL            COMMENT '总评分',
+    `teacher_score`     DECIMAL(5,2) DEFAULT NULL            COMMENT '教师评分',
+    `teacher_score_ratio` DECIMAL(3,1) DEFAULT 5.0           COMMENT '教师评分比重',
+    `teacher_id`        BIGINT       DEFAULT NULL            COMMENT '教师ID',
+    `report_data`       TEXT                                 COMMENT '报告数据(JSON)',
+    `export_format`     VARCHAR(10)  DEFAULT NULL            COMMENT '导出格式: excel/pdf',
+    `create_time`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (`id`),
     KEY `idx_task_id`    (`task_id`),
     KEY `idx_student_id` (`student_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评价报告表';
 
--- 11. 核查记录表
-DROP TABLE IF EXISTS `check_record`;
-CREATE TABLE `check_record` (
-    `id`                BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
-    `result_id`         BIGINT      NOT NULL                COMMENT '实训成果ID',
-    `check_type`        VARCHAR(50) NOT NULL                COMMENT '核查类型: completeness/logic/match',
-    `check_result`      TINYINT     NOT NULL DEFAULT 0      COMMENT '核查结果: 0待核查 1通过 2存在问题',
-    `issue_description` TEXT                                COMMENT '问题描述',
-    `suggestion`        TEXT                                COMMENT '改进建议',
-    `create_time`       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    PRIMARY KEY (`id`),
-    KEY `idx_result_id` (`result_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='核查记录表';
+-- ==================== 四、其他表(4张) ====================
 
-
--- 12. 课程表(上课时间安排)
+-- 11. 课程表(上课时间安排)
 DROP TABLE IF EXISTS `class_schedule`;
 CREATE TABLE `class_schedule` (
     `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -764,6 +751,52 @@ CREATE TABLE `class_schedule` (
     KEY `idx_teacher_id`  (`teacher_id`),
     KEY `idx_day_of_week` (`day_of_week`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程表(上课时间安排)';
+
+-- 12. 轮播图表
+DROP TABLE IF EXISTS `banner`;
+CREATE TABLE `banner` (
+    `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `title`       VARCHAR(100) DEFAULT NULL            COMMENT '标题',
+    `content`     TEXT                                 COMMENT '内容描述',
+    `image_url`   VARCHAR(500) DEFAULT NULL            COMMENT '图片地址',
+    `link_url`    VARCHAR(500) DEFAULT NULL            COMMENT '跳转链接',
+    `sort`        INT          NOT NULL DEFAULT 0      COMMENT '排序(越小越靠前)',
+    `status`      TINYINT      NOT NULL DEFAULT 1      COMMENT '状态: 1上架 0下架',
+    `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='轮播图表';
+
+-- 13. 验证码表
+DROP TABLE IF EXISTS `verification_code`;
+CREATE TABLE `verification_code` (
+    `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `target`      VARCHAR(100) NOT NULL                COMMENT '目标地址（邮箱或手机号）',
+    `code`        VARCHAR(10)  NOT NULL                COMMENT '验证码（6位数字）',
+    `type`        VARCHAR(20)  NOT NULL                COMMENT '类型: email / phone',
+    `used`        TINYINT      NOT NULL DEFAULT 0      COMMENT '是否已使用: 0未使用 1已使用',
+    `expire_time` DATETIME     NOT NULL                COMMENT '过期时间',
+    `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_target` (`target`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='验证码表';
+
+-- 14. AI练习题表
+DROP TABLE IF EXISTS `ai_practice`;
+CREATE TABLE `ai_practice` (
+    `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `student_id`  BIGINT       NOT NULL                COMMENT '学生ID',
+    `course_id`   BIGINT       NOT NULL                COMMENT '课程ID',
+    `course_name` VARCHAR(100) NOT NULL                COMMENT '课程名称',
+    `questions`   TEXT         NOT NULL                COMMENT '题目数据(JSON数组)',
+    `answers`     TEXT         DEFAULT NULL            COMMENT '学生答案(JSON)',
+    `score`       DECIMAL(5,2) DEFAULT NULL            COMMENT '得分',
+    `total_score` DECIMAL(5,2) DEFAULT 100.00          COMMENT '总分',
+    `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_student_id` (`student_id`),
+    KEY `idx_course_id` (`course_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI练习题表';
 
 
 -- ================================================================
@@ -917,15 +950,7 @@ INSERT INTO `training_result` (`task_id`, `student_id`, `file_path`, `file_name`
 '2026-05-29 17:38:14', 1);
 
 
--- ==================== 六、核查记录 ====================
-
-INSERT INTO `check_record` (`result_id`, `check_type`, `check_result`, `issue_description`, `suggestion`) VALUES
-(4, 'completeness', 1, '', '文档结构完整，包含系统概述、功能模块、技术实现等必要章节'),
-(4, 'logic',        1, '', '逻辑清晰，从设计理念到技术实现层层递进'),
-(4, 'match',        1, '', '完全符合响应式设计要求');
-
-
--- ==================== 七、评价记录 ====================
+-- ==================== 六、评价记录 ====================
 
 -- 成果ID=4: 陈同学_响应式网页设计 (含AI评语和教师评语)
 INSERT INTO `evaluation_record` (`result_id`, `indicator_id`, `ai_score`, `teacher_score`, `final_score`, `ai_comment`, `teacher_comment`) VALUES
@@ -1017,8 +1042,10 @@ UNION ALL SELECT '实训成果',   COUNT(*) FROM `training_result`
 UNION ALL SELECT '评价指标',   COUNT(*) FROM `evaluation_indicator`
 UNION ALL SELECT '评价记录',   COUNT(*) FROM `evaluation_record`
 UNION ALL SELECT '评价报告',   COUNT(*) FROM `evaluation_report`
-UNION ALL SELECT '核查记录',   COUNT(*) FROM `check_record`
-UNION ALL SELECT '课程表',     COUNT(*) FROM `class_schedule`;
+UNION ALL SELECT '课程表',     COUNT(*) FROM `class_schedule`
+UNION ALL SELECT '轮播图',     COUNT(*) FROM `banner`
+UNION ALL SELECT '验证码',     COUNT(*) FROM `verification_code`
+UNION ALL SELECT 'AI练习题',   COUNT(*) FROM `ai_practice`;
 
 -- ============================================================
 -- 完整版脚本执行完毕!

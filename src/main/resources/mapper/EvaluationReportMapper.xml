@@ -7,75 +7,86 @@
         <result column="task_id" property="taskId"/>
         <result column="student_id" property="studentId"/>
         <result column="total_score" property="totalScore"/>
+        <result column="teacher_score" property="teacherScore"/>
+        <result column="teacher_score_ratio" property="teacherScoreRatio"/>
+        <result column="teacher_id" property="teacherId"/>
         <result column="report_data" property="reportData"/>
         <result column="export_format" property="exportFormat"/>
         <result column="create_time" property="createTime"/>
         <result column="student_name" property="studentName"/>
         <result column="task_title" property="taskTitle"/>
         <result column="file_name" property="fileName"/>
+        <result column="teacher_name" property="teacherName"/>
     </resultMap>
 
     <select id="selectById" resultMap="BaseResultMap">
-        SELECT rp.*, u.real_name AS student_name, t.title AS task_title, r.file_name
+        SELECT rp.*, u.real_name AS student_name, t.title AS task_title, r.file_name, te.real_name AS teacher_name
         FROM evaluation_report rp
         LEFT JOIN student u ON rp.student_id = u.id
         LEFT JOIN training_task t ON rp.task_id = t.id
         LEFT JOIN training_result r ON rp.task_id = r.task_id AND rp.student_id = r.student_id
+        LEFT JOIN teacher te ON rp.teacher_id = te.id
         WHERE rp.id = #{id}
     </select>
 
     <select id="selectList" resultMap="BaseResultMap">
-        SELECT rp.*, u.real_name AS student_name, t.title AS task_title, r.file_name
+        SELECT rp.*, u.real_name AS student_name, t.title AS task_title, r.file_name, te.real_name AS teacher_name
         FROM evaluation_report rp
         LEFT JOIN student u ON rp.student_id = u.id
         LEFT JOIN training_task t ON rp.task_id = t.id
         LEFT JOIN training_result r ON rp.task_id = r.task_id AND rp.student_id = r.student_id
+        LEFT JOIN teacher te ON rp.teacher_id = te.id
         ORDER BY rp.create_time DESC
     </select>
 
     <select id="selectByTaskId" resultMap="BaseResultMap">
-        SELECT rp.*, u.real_name AS student_name, t.title AS task_title, r.file_name
+        SELECT rp.*, u.real_name AS student_name, t.title AS task_title, r.file_name, te.real_name AS teacher_name
         FROM evaluation_report rp
         LEFT JOIN student u ON rp.student_id = u.id
         LEFT JOIN training_task t ON rp.task_id = t.id
         LEFT JOIN training_result r ON rp.task_id = r.task_id AND rp.student_id = r.student_id
+        LEFT JOIN teacher te ON rp.teacher_id = te.id
         WHERE rp.task_id = #{taskId}
         ORDER BY rp.create_time DESC
     </select>
 
     <select id="selectByTaskAndStudent" resultMap="BaseResultMap">
-        SELECT rp.*, u.real_name AS student_name, t.title AS task_title, r.file_name
+        SELECT rp.*, u.real_name AS student_name, t.title AS task_title, r.file_name, te.real_name AS teacher_name
         FROM evaluation_report rp
         LEFT JOIN student u ON rp.student_id = u.id
         LEFT JOIN training_task t ON rp.task_id = t.id
         LEFT JOIN training_result r ON rp.task_id = r.task_id AND rp.student_id = r.student_id
+        LEFT JOIN teacher te ON rp.teacher_id = te.id
         WHERE rp.task_id = #{taskId} AND rp.student_id = #{studentId}
         ORDER BY rp.create_time DESC
     </select>
 
     <select id="selectByTeacherId" resultMap="BaseResultMap">
-        SELECT rp.*, u.real_name AS student_name, t.title AS task_title, r.file_name
+        SELECT rp.*, u.real_name AS student_name, t.title AS task_title, r.file_name, te.real_name AS teacher_name
         FROM evaluation_report rp
         LEFT JOIN student u ON rp.student_id = u.id
         LEFT JOIN training_task t ON rp.task_id = t.id
         LEFT JOIN training_result r ON rp.task_id = r.task_id AND rp.student_id = r.student_id
         LEFT JOIN course c ON t.course_id = c.id
+        LEFT JOIN teacher te ON rp.teacher_id = te.id
         WHERE c.teacher_id = #{teacherId}
         ORDER BY rp.create_time DESC
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO evaluation_report (task_id, student_id, total_score, report_data, export_format)
-        VALUES (#{taskId}, #{studentId}, #{totalScore}, #{reportData}, #{exportFormat})
+        INSERT INTO evaluation_report (task_id, student_id, total_score, teacher_score, teacher_score_ratio, teacher_id, report_data, export_format)
+        VALUES (#{taskId}, #{studentId}, #{totalScore}, #{teacherScore}, #{teacherScoreRatio}, #{teacherId}, #{reportData}, #{exportFormat})
     </insert>
 
     <update id="updateById">
         UPDATE evaluation_report
         <set>
             <if test="totalScore != null">total_score = #{totalScore},</if>
+            <if test="teacherScore != null">teacher_score = #{teacherScore},</if>
+            <if test="teacherScoreRatio != null">teacher_score_ratio = #{teacherScoreRatio},</if>
+            <if test="teacherId != null">teacher_id = #{teacherId},</if>
             <if test="reportData != null">report_data = #{reportData},</if>
             <if test="exportFormat != null">export_format = #{exportFormat},</if>
-            create_time = #{createTime}
         </set>
         WHERE id = #{id}
     </update>

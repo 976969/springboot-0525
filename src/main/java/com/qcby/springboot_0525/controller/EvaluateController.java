@@ -130,11 +130,11 @@ public class EvaluateController {
             }
         }
 
-        // 只有全部成功时才更新状态为已评价，部分成功则更新为已核查
+        // 只有全部成功时才更新状态为已AI评分，部分成功则更新为已AI评分(部分)
         if (failCount == 0) {
-            resultService.updateStatus(resultId, 2); // 已评价
+            resultService.updateStatus(resultId, 2); // 已AI评分（全部指标成功）
         } else if (successCount > 0) {
-            resultService.updateStatus(resultId, 1); // 已核查（部分评分）
+            resultService.updateStatus(resultId, 1); // 已AI评分（部分指标成功）
         }
 
         Map<String, Object> resultMap = new HashMap<>();
@@ -179,6 +179,14 @@ public class EvaluateController {
      */
     @GetMapping("/records/{resultId}")
     public Result<List<EvaluationRecord>> getRecords(@PathVariable Long resultId) {
+        return Result.success(recordMapper.selectByResultId(resultId));
+    }
+    
+    /**
+     * 根据成果ID获取评价记录（用于报表中心显示AI评分）
+     */
+    @GetMapping("/by-result")
+    public Result<List<EvaluationRecord>> getRecordsByResultId(@RequestParam Long resultId) {
         return Result.success(recordMapper.selectByResultId(resultId));
     }
 

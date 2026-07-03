@@ -39,7 +39,8 @@ public class EvaluationIndicatorController {
     @GetMapping("/page")
     public Result<PageResult<EvaluationIndicator>> list(
             @RequestParam(defaultValue = "1") int pageNum,
-            @RequestParam(defaultValue = "10") int pageSize) {
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) Long teacherId) {
         
         String role = (String) StpUtil.getSession().get("role");
         Object realIdObj = StpUtil.getSession().get("realId");
@@ -47,15 +48,19 @@ public class EvaluationIndicatorController {
         List<EvaluationIndicator> list;
         
         if ("teacher".equals(role) && realIdObj != null) {
-            Long teacherId = Long.valueOf(realIdObj.toString());
+            Long tid = Long.valueOf(realIdObj.toString());
             // 首次登录时初始化指标
-            indicatorService.initTeacherIndicators(teacherId);
+            indicatorService.initTeacherIndicators(tid);
             // 教师：只看自己的指标
-            list = indicatorService.listByTeacherId(teacherId);
+            list = indicatorService.listByTeacherId(tid);
         } else {
             // 管理员：看所有指标
             PageHelper.startPage(pageNum, pageSize);
             list = indicatorService.list();
+            // 管理员可按教师筛选
+            if (teacherId != null) {
+                list = list.stream().filter(i -> teacherId.equals(i.getTeacherId())).collect(java.util.stream.Collectors.toList());
+            }
         }
         
         PageInfo<EvaluationIndicator> pageInfo = new PageInfo<>(list);

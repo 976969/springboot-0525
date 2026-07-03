@@ -11,28 +11,39 @@
         <result column="default_weight" property="defaultWeight"/>
         <result column="original_weight" property="originalWeight"/>
         <result column="is_system" property="isSystem"/>
+        <result column="teacher_name" property="teacherName"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
     <select id="selectById" resultMap="BaseResultMap">
-        SELECT * FROM evaluation_indicator WHERE id = #{id}
+        SELECT i.*, te.real_name AS teacher_name
+        FROM evaluation_indicator i
+        LEFT JOIN teacher te ON i.teacher_id = te.id
+        WHERE i.id = #{id}
     </select>
 
     <select id="selectList" resultMap="BaseResultMap">
-        SELECT * FROM evaluation_indicator ORDER BY is_system DESC, create_time ASC
+        SELECT i.*, te.real_name AS teacher_name
+        FROM evaluation_indicator i
+        LEFT JOIN teacher te ON i.teacher_id = te.id
+        ORDER BY i.is_system DESC, i.create_time ASC
     </select>
 
     <select id="selectByTeacherId" resultMap="BaseResultMap">
-        SELECT * FROM evaluation_indicator 
-        WHERE teacher_id = #{teacherId} 
-        ORDER BY is_system DESC, create_time ASC
+        SELECT i.*, te.real_name AS teacher_name
+        FROM evaluation_indicator i
+        LEFT JOIN teacher te ON i.teacher_id = te.id
+        WHERE i.teacher_id = #{teacherId}
+        ORDER BY i.is_system DESC, i.create_time ASC
     </select>
 
     <select id="selectSystemTemplate" resultMap="BaseResultMap">
-        SELECT * FROM evaluation_indicator 
-        WHERE teacher_id = 0 
-        ORDER BY is_system DESC, create_time ASC
+        SELECT i.*, te.real_name AS teacher_name
+        FROM evaluation_indicator i
+        LEFT JOIN teacher te ON i.teacher_id = te.id
+        WHERE i.teacher_id = 0
+        ORDER BY i.is_system DESC, i.create_time ASC
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">

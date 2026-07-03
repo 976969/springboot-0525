@@ -51,7 +51,7 @@
           <template #label><span class="tab-label"><el-icon><EditPen /></el-icon> 注册账号</span></template>
           <el-form :model="registerForm" :rules="registerRules" ref="registerRef" label-width="0">
             <el-form-item prop="username"><el-input v-model="registerForm.username" prefix-icon="User" placeholder="用户名（3-20字符）" size="large" /></el-form-item>
-            <el-form-item prop="password"><el-input v-model="registerForm.password" prefix-icon="Lock" type="password" placeholder="密码（至少6位）" show-password size="large" /></el-form-item>
+            <el-form-item prop="password"><el-input v-model="registerForm.password" prefix-icon="Lock" type="password" placeholder="密码（至少4位）" show-password size="large" /></el-form-item>
             <el-form-item prop="confirmPassword"><el-input v-model="registerForm.confirmPassword" prefix-icon="Lock" type="password" placeholder="确认密码" show-password size="large" /></el-form-item>
             <el-form-item prop="realName"><el-input v-model="registerForm.realName" prefix-icon="UserFilled" placeholder="真实姓名" size="large" /></el-form-item>
             <el-row :gutter="12"><el-col :span="12"><el-form-item prop="studentNo"><el-input v-model="registerForm.studentNo" placeholder="学号（选填）" size="large" /></el-form-item></el-col><el-col :span="12"><el-form-item prop="className"><el-input v-model="registerForm.className" placeholder="班级（选填）" size="large" /></el-form-item></el-col></el-row>
@@ -116,7 +116,7 @@ const registerRef=ref(null)
 const registerForm=reactive({username:'',password:'',confirmPassword:'',realName:'',studentNo:'',className:'',phone:'',email:'',code:''})
 const registerRules={
   username:[{required:true,message:'请输入用户名',trigger:'blur'},{min:3,max:20,message:'3-20个字符',trigger:'blur'}],
-  password:[{required:true,message:'请输入密码',trigger:'blur'},{min:6,message:'至少6位',trigger:'blur'}],
+  password:[{required:true,message:'请输入密码',trigger:'blur'},{min:4,message:'至少4位',trigger:'blur'}],
   confirmPassword:[{required:true,message:'请确认密码',trigger:'blur'},{validator:(r,v,c)=>v!==registerForm.password?c(new Error('两次密码不一致')):c(),trigger:'blur'}],
   realName:[{required:true,message:'请输入真实姓名',trigger:'blur'}],
   phone:[{required:true,message:'请输入手机号',trigger:'blur'},{pattern:/^1[3-9]\d{9}$/,message:'格式不正确',trigger:'blur'}],

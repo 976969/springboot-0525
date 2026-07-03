@@ -102,7 +102,8 @@
     <el-dialog v-model="taskDialogVisible" title="选择实训任务" width="750px" top="5vh">
       <el-input v-model="taskSearch" placeholder="搜索任务名称" size="small" clearable style="margin-bottom: 15px;" />
       <div class="task-list-container" v-loading="taskLoading">
-        <div v-for="group in filteredTaskGroups" :key="group.courseName" style="margin-bottom: 16px;">
+        <!-- 未过期任务（正常显示） -->
+        <div v-for="group in filteredActiveGroups" :key="'active-' + group.courseName" style="margin-bottom: 16px;">
           <div class="course-header">
             <el-tag type="primary" size="small">{{ group.courseName }}</el-tag>
             <span class="teacher-name">授课教师：{{ group.teacherName || '未知' }}</span>
@@ -119,7 +120,6 @@
                 {{ task.title }}
                 <el-tag v-if="submittedTaskIds.has(task.id)" type="success" size="small">已提交</el-tag>
                 <el-tag v-else type="warning" size="small">未提交</el-tag>
-                <el-tag v-if="isTaskExpired(task)" type="danger" size="small">已过期</el-tag>
               </div>
               <div class="task-meta">
                 <span v-if="task.deadline">截止时间：{{ task.deadline }}</span>
@@ -130,7 +130,40 @@
           </div>
           <el-empty v-if="group.tasks.length === 0" description="暂无任务" :image-size="40" />
         </div>
-        <el-empty v-if="filteredTaskGroups.length === 0" description="暂无可选的实训任务" :image-size="80" />
+        <el-empty v-if="filteredActiveGroups.length === 0 && filteredExpiredGroups.length === 0" description="暂无可选的实训任务" :image-size="80" />
+
+        <!-- 已过期任务（折叠区域） -->
+        <div v-if="filteredExpiredGroups.length > 0" class="expired-section">
+          <div class="expired-toggle" @click="showExpired = !showExpired">
+            <el-icon :size="16" :style="{ transform: showExpired ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.2s' }"><ArrowRight /></el-icon>
+            <span>已过期任务（{{ expiredTaskCount }} 个）</span>
+          </div>
+          <div v-show="showExpired" class="expired-content">
+            <div v-for="group in filteredExpiredGroups" :key="'expired-' + group.courseName" style="margin-bottom: 12px;">
+              <div class="course-header expired-header">
+                <el-tag type="info" size="small" effect="plain">{{ group.courseName }}</el-tag>
+                <span class="teacher-name">{{ group.teacherName || '未知' }}</span>
+              </div>
+              <div 
+                v-for="task in group.tasks" 
+                :key="task.id" 
+                class="task-item task-expired"
+                @click="selectTask(task)"
+              >
+                <div class="task-info">
+                  <div class="task-title">
+                    {{ task.title }}
+                    <el-tag type="danger" size="small">已过期</el-tag>
+                    <el-tag v-if="submittedTaskIds.has(task.id)" type="success" size="small">已提交</el-tag>
+                  </div>
+                  <div class="task-meta">
+                    <span v-if="task.deadline">截止时间：{{ task.deadline }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <template #footer>
         <el-button @click="taskDialogVisible = false">取消</el-button>
@@ -143,7 +176,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Select } from '@element-plus/icons-vue'
+import { Select, ArrowRight } from '@element-plus/icons-vue'
 import request from '../utils/request'
 
 const fileList = ref([])
@@ -169,6 +202,7 @@ const myCourses = ref([])              // 学生已选课程
 const myResults = ref([])              // 学生已提交成果
 const selectedTask = ref(null)         // 当前选中的任务对象
 const tempSelectedTask = ref(null)     // 弹框中临时选中的任务
+const showExpired = ref(false)           // 是否展开已过期任务
 
 // 已选课程ID集合
 const enrolledCourseIds = computed(() => new Set(myCourses.value.map(c => c.courseId)))
@@ -185,11 +219,12 @@ const courseTeacherMap = computed(() => {
   return map
 })
 
-// 只保留学生已选课程对应的任务，按课程分组
-const taskGroups = computed(() => {
+// 将任务分为未过期和已过期两组，按课程分组
+const activeGroups = computed(() => {
   const groups = {}
   allTasks.value.forEach(task => {
     if (!enrolledCourseIds.value.has(task.courseId)) return
+    if (isTaskExpired(task)) return
     const key = task.courseName || '未知课程'
     if (!groups[key]) {
       groups[key] = {
@@ -203,11 +238,44 @@ const taskGroups = computed(() => {
   return Object.values(groups)
 })
 
-// 搜索过滤后的任务分组
-const filteredTaskGroups = computed(() => {
+const expiredGroups = computed(() => {
+  const groups = {}
+  allTasks.value.forEach(task => {
+    if (!enrolledCourseIds.value.has(task.courseId)) return
+    if (!isTaskExpired(task)) return
+    const key = task.courseName || '未知课程'
+    if (!groups[key]) {
+      groups[key] = {
+        courseName: key,
+        teacherName: courseTeacherMap.value[task.courseId] || '未知',
+        tasks: []
+      }
+    }
+    groups[key].tasks.push(task)
+  })
+  return Object.values(groups)
+})
+
+// 过期任务总数
+const expiredTaskCount = computed(() => {
+  return expiredGroups.value.reduce((sum, g) => sum + g.tasks.length, 0)
+})
+
+// 搜索过滤后的未过期任务分组
+const filteredActiveGroups = computed(() => {
   const keyword = taskSearch.value.trim().toLowerCase()
-  if (!keyword) return taskGroups.value
-  return taskGroups.value.map(g => ({
+  if (!keyword) return activeGroups.value
+  return activeGroups.value.map(g => ({
+    ...g,
+    tasks: g.tasks.filter(t => t.title?.toLowerCase().includes(keyword))
+  })).filter(g => g.tasks.length > 0)
+})
+
+// 搜索过滤后的已过期任务分组
+const filteredExpiredGroups = computed(() => {
+  const keyword = taskSearch.value.trim().toLowerCase()
+  if (!keyword) return expiredGroups.value
+  return expiredGroups.value.map(g => ({
     ...g,
     tasks: g.tasks.filter(t => t.title?.toLowerCase().includes(keyword))
   })).filter(g => g.tasks.length > 0)
@@ -222,6 +290,7 @@ const isTaskExpired = (task) => {
 // 打开任务选择弹框
 const openTaskDialog = async () => {
   tempSelectedTask.value = selectedTask.value
+  showExpired.value = false
   taskDialogVisible.value = true
   if (allTasks.value.length === 0) {
     taskLoading.value = true
@@ -438,5 +507,42 @@ onMounted(() => {
 .task-meta {
   font-size: 12px;
   color: #909399;
+}
+
+/* 已过期任务折叠区域 */
+.expired-section {
+  margin-top: 8px;
+  border-top: 1px dashed #dcdfe6;
+  padding-top: 12px;
+}
+.expired-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #909399;
+  font-size: 13px;
+  user-select: none;
+  transition: color 0.2s;
+}
+.expired-toggle:hover {
+  color: #606266;
+}
+.expired-content {
+  padding: 4px 0 0 20px;
+}
+.expired-header {
+  opacity: 0.7;
+}
+.task-item.task-expired {
+  background-color: #f5f5f5;
+  border-color: #d9d9d9;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.task-item.task-expired:hover {
+  border-color: #d9d9d9;
+  background-color: #ebebeb;
 }
 </style>

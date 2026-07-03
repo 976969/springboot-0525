@@ -77,7 +77,7 @@
         <el-card shadow="hover">
           <template #header>
             <div class="card-header">
-              <span>📈 学习进度趋势(最近30天)</span>
+              <span>📈 提交记录趋势(最近30天)</span>
             </div>
           </template>
           <div ref="progressChartRef" style="height: 300px"></div>
@@ -194,8 +194,8 @@ const stats = reactive({
   certificateCount: 0
 })
 
-// 学习天数(模拟)
-const studyDays = ref(45)
+// 学习天数(真实，从首次提交算起)
+const studyDays = ref(1)
 
 // 图表DOM引用
 const progressChartRef = ref(null)
@@ -217,7 +217,17 @@ const loadStats = async () => {
   }
 }
 
-// 加载学习进度数据
+// 加载学习天数
+const loadStudyDays = async () => {
+  try {
+    const res = await request.get('/dashboard/student/study-days')
+    studyDays.value = res.data?.studyDays || 1
+  } catch (e) {
+    console.error('加载学习天数失败:', e)
+  }
+}
+
+// 加载学习进度数据（最近30天提交数量）
 const loadProgressData = async () => {
   try {
     const res = await request.get('/dashboard/student/progress')
@@ -263,7 +273,7 @@ const initCharts = async () => {
     progressChart.setOption({
       tooltip: {
         trigger: 'axis',
-        formatter: '{b}<br/>学习时长: {c}分钟'
+        formatter: '{b}<br/>提交数量: {c} 份'
       },
       grid: {
         left: '3%',
@@ -275,19 +285,20 @@ const initCharts = async () => {
         type: 'category',
         data: progressData.map(item => item.date),
         axisLabel: {
-          interval: 5, // 每隔5个显示标签
+          interval: 5,
           rotate: 45
         }
       },
       yAxis: {
         type: 'value',
-        name: '学习时长(分钟)'
+        name: '提交数量(份)',
+        minInterval: 1
       },
       series: [{
-        name: '学习时长',
+        name: '提交数量',
         type: 'line',
-        smooth: true, // 平滑曲线
-        data: progressData.map(item => item.studyTime),
+        smooth: true,
+        data: progressData.map(item => item.submissions),
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
             { offset: 0, color: 'rgba(102, 126, 234, 0.3)' },
@@ -385,7 +396,7 @@ const initCharts = async () => {
 
 // 组件挂载时执行
 onMounted(async () => {
-  await loadStats()
+  await Promise.all([loadStats(), loadStudyDays()])
   await initCharts()
   
   // 窗口大小变化时重新调整图表

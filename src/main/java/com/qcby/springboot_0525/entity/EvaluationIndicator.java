@@ -25,6 +25,10 @@ public class EvaluationIndicator {
     private BigDecimal originalWeight;
     /** 是否系统指标：1-系统，0-自定义 */
     private Integer isSystem;
+
+    /** 关联查询字段：教师名称 */
+    private String teacherName;
+
     /** 创建时间 */
     private Date createTime;
     /** 更新时间 */
