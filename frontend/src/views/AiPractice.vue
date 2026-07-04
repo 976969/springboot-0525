@@ -24,7 +24,9 @@
               <el-icon :size="32"><Reading /></el-icon>
             </div>
             <div class="course-info">
-              <h4>{{ course.name }}</h4>
+              <el-tooltip :content="course.name" placement="top" :show-after="300">
+                <h4>{{ course.name }}</h4>
+              </el-tooltip>
               <p class="teacher">{{ course.teacherName }}</p>
               <div class="course-stats">
                 <el-tag size="small" type="info">练习 {{ course.practiceCount }} 次</el-tag>

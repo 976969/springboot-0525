@@ -121,18 +121,10 @@
           </template>
           <el-row :gutter="15" style="margin-top: 20px">
             <el-col :span="8">
-              <el-button type="primary" plain @click="$router.push('/course')" style="width: 100%; height: 80px">
+              <el-button type="primary" plain @click="$router.push('/my-courses')" style="width: 100%; height: 80px">
                 <div style="text-align: center">
                   <div style="font-size: 24px">📚</div>
                   <div>我的课程</div>
-                </div>
-              </el-button>
-            </el-col>
-            <el-col :span="8">
-              <el-button type="success" plain @click="$router.push('/task')" style="width: 100%; height: 80px">
-                <div style="text-align: center">
-                  <div style="font-size: 24px">✅</div>
-                  <div>实训任务</div>
                 </div>
               </el-button>
             </el-col>
@@ -144,29 +136,21 @@
                 </div>
               </el-button>
             </el-col>
-          </el-row>
-          <el-row :gutter="15" style="margin-top: 15px">
-            <el-col :span="8">
-              <el-button type="info" plain @click="$router.push('/evaluate')" style="width: 100%; height: 80px">
-                <div style="text-align: center">
-                  <div style="font-size: 24px">📝</div>
-                  <div>评价记录</div>
-                </div>
-              </el-button>
-            </el-col>
-            <el-col :span="8">
-              <el-button type="danger" plain @click="$router.push('/report')" style="width: 100%; height: 80px">
-                <div style="text-align: center">
-                  <div style="font-size: 24px">📊</div>
-                  <div>报表中心</div>
-                </div>
-              </el-button>
-            </el-col>
             <el-col :span="8">
               <el-button plain @click="$router.push('/profile')" style="width: 100%; height: 80px">
                 <div style="text-align: center">
                   <div style="font-size: 24px">👤</div>
                   <div>个人中心</div>
+                </div>
+              </el-button>
+            </el-col>
+          </el-row>
+          <el-row :gutter="15" style="margin-top: 15px">
+            <el-col :span="8">
+              <el-button type="info" plain @click="$router.push('/my-scores')" style="width: 100%; height: 80px">
+                <div style="text-align: center">
+                  <div style="font-size: 24px">📝</div>
+                  <div>评价记录</div>
                 </div>
               </el-button>
             </el-col>
@@ -269,7 +253,7 @@ const initCharts = async () => {
   if (progressChartRef.value) {
     progressChart = echarts.init(progressChartRef.value)
     const progressData = await loadProgressData()
-    
+
     progressChart.setOption({
       tooltip: {
         trigger: 'axis',
@@ -320,7 +304,7 @@ const initCharts = async () => {
   if (completionChartRef.value) {
     completionChart = echarts.init(completionChartRef.value)
     const completionData = await loadCompletionData()
-    
+
     completionChart.setOption({
       tooltip: {
         trigger: 'item',
@@ -354,7 +338,7 @@ const initCharts = async () => {
   if (scoreChartRef.value) {
     scoreChart = echarts.init(scoreChartRef.value)
     const scoreData = await loadScoreData()
-    
+
     scoreChart.setOption({
       tooltip: {
         trigger: 'axis',
@@ -398,7 +382,7 @@ const initCharts = async () => {
 onMounted(async () => {
   await Promise.all([loadStats(), loadStudyDays()])
   await initCharts()
-  
+
   // 窗口大小变化时重新调整图表
   window.addEventListener('resize', () => {
     progressChart?.resize()
@@ -537,11 +521,11 @@ onMounted(async () => {
   .stat-card {
     margin-bottom: 20px;
   }
-  
+
   .welcome-text h2 {
     font-size: 22px;
   }
-  
+
   .stat-value {
     font-size: 28px;
   }

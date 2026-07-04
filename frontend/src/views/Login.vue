@@ -10,17 +10,19 @@
         <h2 class="login-title">智能实训评价系统</h2>
         <p class="login-subtitle">AI驱动的实训教学管理与评价平台</p>
       </div>
+      <!-- 变量activeTab控制登录/注册 -->
       <el-tabs v-model="activeTab" class="login-tabs" :stretch="true">
         <el-tab-pane name="account">
           <template #label><span class="tab-label"><el-icon><User /></el-icon> {{ loginTabLabel }}</span></template>
           <el-form :model="loginForm" :rules="loginRules" ref="loginRef" label-width="0" @keyup.enter="handleLogin">
             <el-form-item prop="role">
               <el-select v-model="loginForm.role" placeholder="请选择身份" style="width:100%" size="large">
-                <el-option label="🧑‍💼  管理员" value="admin" />
-                <el-option label="👨‍🏫  教师" value="teacher" />
+                <el-option label="🧑💼  管理员" value="admin" />
+                <el-option label="👨🏫  教师" value="teacher" />
                 <el-option label="🎓  学生" value="student" />
               </el-select>
             </el-form-item>
+            <!-- 账号/手机/邮箱三选一 -->
             <template v-if="loginMode==='username'">
               <el-form-item prop="username"><el-input v-model="loginForm.username" prefix-icon="User" placeholder="请输入用户名" size="large" /></el-form-item>
               <el-form-item prop="password"><el-input v-model="loginForm.password" prefix-icon="Lock" type="password" placeholder="请输入密码" show-password size="large" /></el-form-item>
@@ -82,7 +84,11 @@ const activeTab = ref('account')
 const loginMode = ref('username')
 const showOtherWays = ref(false)
 const loginTabLabel = computed(() => ({username:'账号登录',phone:'手机号登录',email:'邮箱验证码登录'}[loginMode.value]||'账号登录'))
-const switchLoginMode = async (mode) => { loginMode.value = mode; await nextTick(); loginRef.value?.clearValidate() }
+const switchLoginMode = async (mode) => {const allFields = ['username', 'password', 'phone', 'phoneCode', 'email', 'emailCode', 'role'];if (loginRef.value) {loginRef.value.clearValidate(allFields);}
+  Object.keys(loginForm).forEach(key => {if (key !== 'role') {loginForm[key] = '';}});loginMode.value = mode;await nextTick();if (loginRef.value) {loginRef.value.clearValidate(allFields);}
+  //极端处理
+  setTimeout(() => loginRef.value?.clearValidate(allFields), 30);
+}
 
 // 登录表单
 const loginRef = ref(null)
