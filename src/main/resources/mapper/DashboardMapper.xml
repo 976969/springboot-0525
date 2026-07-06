@@ -208,7 +208,7 @@
         SELECT COUNT(*) FROM course WHERE status = 1
     </select>
 
-    <!-- 待核查成果数 -->
+    <!-- 待评价成果数 -->
     <select id="countPendingResults" resultType="int">
         SELECT COUNT(*) FROM training_result WHERE status = 0
     </select>
@@ -270,15 +270,14 @@
     <!-- 成果状态分布 -->
     <select id="getResultStatusDistribution" resultType="map">
         SELECT
-            CASE status
-                WHEN 0 THEN '待核查'
-                WHEN 1 THEN '已核查'
-                WHEN 2 THEN '已评价'
+            CASE
+                WHEN status >= 2 THEN '已评价'
+                ELSE '待评价'
             END AS name,
             COUNT(*) AS value
         FROM training_result
-        GROUP BY status
-        ORDER BY status
+        GROUP BY CASE WHEN status >= 2 THEN 1 ELSE 0 END
+        ORDER BY MIN(status)
     </select>
 
     <!-- 最近10条提交记录 -->
@@ -289,10 +288,9 @@
             c.name AS courseName,
             r.upload_time AS uploadTime,
             r.file_name AS fileName,
-            CASE r.status
-                WHEN 0 THEN '待核查'
-                WHEN 1 THEN '已核查'
-                WHEN 2 THEN '已评价'
+            CASE
+                WHEN r.status >= 2 THEN '已评价'
+                ELSE '待评价'
             END AS statusText
         FROM training_result r
         JOIN training_task t ON r.task_id = t.id
@@ -300,6 +298,129 @@
         JOIN student s ON r.student_id = s.id
         ORDER BY r.upload_time DESC
         LIMIT 10
+    </select>
+
+    <!-- ============ 管理员评价/报表统计 ============ -->
+
+    <!-- AI评分总览统计 -->
+    <select id="getAdminEvaluationStats" resultType="map">
+        SELECT
+            COUNT(*) AS totalCount,
+            SUM(CASE WHEN r.status >= 2 THEN 1 ELSE 0 END) AS scoredCount,
+            SUM(CASE WHEN r.status = 1 THEN 1 ELSE 0 END) AS partialCount,
+            SUM(CASE WHEN r.status = 0 THEN 1 ELSE 0 END) AS pendingCount,
+            ROUND(COALESCE(AVG(CASE WHEN r.status >= 1 THEN ai_avg.avg_score END), 0), 1) AS avgAiScore
+        FROM training_result r
+        LEFT JOIN (
+            SELECT result_id, AVG(ai_score) AS avg_score
+            FROM evaluation_record
+            GROUP BY result_id
+        ) ai_avg ON ai_avg.result_id = r.id
+    </select>
+
+    <!-- 按任务分组的评分摘要 -->
+    <select id="getEvaluationByTask" resultType="map">
+        SELECT
+            t.id AS taskId,
+            t.title AS taskName,
+            te.real_name AS teacherName,
+            COUNT(r.id) AS studentCount,
+            SUM(CASE WHEN r.status >= 2 THEN 1 ELSE 0 END) AS scoredCount,
+            ROUND(COALESCE(AVG(ai_avg.avg_score), 0), 1) AS avgScore
+        FROM training_result r
+        JOIN training_task t ON r.task_id = t.id
+        JOIN course c ON t.course_id = c.id
+        JOIN teacher te ON c.teacher_id = te.id
+        LEFT JOIN (
+            SELECT result_id, AVG(ai_score) AS avg_score
+            FROM evaluation_record
+            GROUP BY result_id
+        ) ai_avg ON ai_avg.result_id = r.id
+        GROUP BY t.id, t.title, te.real_name
+        ORDER BY avgScore DESC
+    </select>
+
+    <!-- 按教师分组的评分摘要 -->
+    <select id="getEvaluationByTeacher" resultType="map">
+        SELECT
+            te.real_name AS teacherName,
+            COUNT(r.id) AS resultCount,
+            SUM(CASE WHEN r.status >= 2 THEN 1 ELSE 0 END) AS scoredCount,
+            ROUND(COALESCE(AVG(ai_avg.avg_score), 0), 1) AS avgScore
+        FROM training_result r
+        JOIN training_task t ON r.task_id = t.id
+        JOIN course c ON t.course_id = c.id
+        JOIN teacher te ON c.teacher_id = te.id
+        LEFT JOIN (
+            SELECT result_id, AVG(ai_score) AS avg_score
+            FROM evaluation_record
+            GROUP BY result_id
+        ) ai_avg ON ai_avg.result_id = r.id
+        GROUP BY te.id, te.real_name
+        ORDER BY avgScore DESC
+    </select>
+
+    <!-- 报表总览统计 -->
+    <select id="getAdminReportStats" resultType="map">
+        SELECT
+            COUNT(*) AS totalReports,
+            ROUND(COALESCE(AVG(total_score), 0), 1) AS avgFinalScore,
+            ROUND(
+                SUM(CASE WHEN teacher_score IS NOT NULL AND teacher_score > 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*),
+                1
+            ) AS teacherScoredRate
+        FROM evaluation_report
+    </select>
+
+    <!-- 各任务报告平均分对比 -->
+    <select id="getReportScoreByTask" resultType="map">
+        SELECT
+            t.title AS taskName,
+            COUNT(r.id) AS reportCount,
+            ROUND(COALESCE(AVG(r.total_score), 0), 1) AS avgScore
+        FROM evaluation_report r
+        JOIN training_task t ON r.task_id = t.id
+        GROUP BY t.id, t.title
+        ORDER BY avgScore DESC
+    </select>
+
+    <!-- 各教师报告平均分对比 -->
+    <select id="getReportScoreByTeacher" resultType="map">
+        SELECT
+            te.real_name AS teacherName,
+            COUNT(r.id) AS reportCount,
+            ROUND(COALESCE(AVG(r.total_score), 0), 1) AS avgScore
+        FROM evaluation_report r
+        JOIN training_task t ON r.task_id = t.id
+        JOIN course c ON t.course_id = c.id
+        JOIN teacher te ON c.teacher_id = te.id
+        GROUP BY te.id, te.real_name
+        ORDER BY avgScore DESC
+    </select>
+
+    <!-- 按任务维度的组合统计（AI评分 + 报告评分） -->
+    <select id="getCombinedTaskStats" resultType="map">
+        SELECT
+            t.id AS taskId,
+            t.title AS taskName,
+            te.real_name AS teacherName,
+            COUNT(DISTINCT r.id) AS studentCount,
+            SUM(CASE WHEN r.status >= 2 THEN 1 ELSE 0 END) AS aiScoredCount,
+            ROUND(COALESCE(AVG(ai_avg.avg_score), 0), 1) AS avgAiScore,
+            COUNT(DISTINCT rpt.id) AS reportCount,
+            ROUND(COALESCE(AVG(rpt.total_score), 0), 1) AS avgReportScore
+        FROM training_task t
+        JOIN course c ON t.course_id = c.id
+        JOIN teacher te ON c.teacher_id = te.id
+        LEFT JOIN training_result r ON r.task_id = t.id
+        LEFT JOIN (
+            SELECT result_id, AVG(ai_score) AS avg_score
+            FROM evaluation_record
+            GROUP BY result_id
+        ) ai_avg ON ai_avg.result_id = r.id
+        LEFT JOIN evaluation_report rpt ON rpt.task_id = r.task_id AND rpt.student_id = r.student_id
+        GROUP BY t.id, t.title, te.real_name
+        ORDER BY avgAiScore DESC
     </select>
 
 </mapper>

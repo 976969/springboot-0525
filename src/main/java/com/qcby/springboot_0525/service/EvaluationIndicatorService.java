@@ -80,12 +80,8 @@ public class EvaluationIndicatorService {
         indicatorMapper.updateById(indicator);
     }
 
-    /** 删除指标（系统指标不可删除） */
+    /** 删除指标（权限校验由Controller层完成） */
     public void delete(Long id) {
-        EvaluationIndicator indicator = indicatorMapper.selectById(id);
-        if (indicator != null && indicator.getIsSystem() == 1) {
-            throw new BusinessException("系统内置指标不可删除");
-        }
         indicatorMapper.deleteById(id);
     }
 

@@ -95,18 +95,65 @@ public class EvaluationIndicatorController {
 
     @PostMapping
     public Result<Void> add(@RequestBody EvaluationIndicator indicator) {
+        String role = (String) StpUtil.getSession().get("role");
+        Object realIdObj = StpUtil.getSession().get("realId");
+        
+        // 教师只能创建自定义指标
+        if ("teacher".equals(role) && realIdObj != null) {
+            Long tid = Long.valueOf(realIdObj.toString());
+            indicator.setTeacherId(tid);
+            indicator.setIsSystem(0);
+        }
+        // 管理员可以创建系统指标（teacher_id=0）或自定义指标
+        
         indicatorService.add(indicator);
         return Result.success();
     }
 
     @PutMapping
     public Result<Void> update(@RequestBody EvaluationIndicator indicator) {
+        String role = (String) StpUtil.getSession().get("role");
+        Object realIdObj = StpUtil.getSession().get("realId");
+        
+        if ("teacher".equals(role) && realIdObj != null) {
+            Long tid = Long.valueOf(realIdObj.toString());
+            // 教师只能编辑自己的指标
+            EvaluationIndicator existing = indicatorService.getById(indicator.getId());
+            if (existing == null || !tid.equals(existing.getTeacherId())) {
+                throw new BusinessException(403, "无权限编辑该指标");
+            }
+        }
+        // 管理员可以编辑所有指标
+        
         indicatorService.update(indicator);
         return Result.success();
     }
 
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
+        String role = (String) StpUtil.getSession().get("role");
+        
+        EvaluationIndicator indicator = indicatorService.getById(id);
+        if (indicator == null) {
+            throw new BusinessException("指标不存在");
+        }
+        
+        if ("teacher".equals(role)) {
+            // 教师不能删除系统指标
+            if (indicator.getIsSystem() != null && indicator.getIsSystem() == 1) {
+                throw new BusinessException("系统指标不可删除");
+            }
+            // 教师只能删除自己的指标
+            Object realIdObj = StpUtil.getSession().get("realId");
+            if (realIdObj != null) {
+                Long tid = Long.valueOf(realIdObj.toString());
+                if (!tid.equals(indicator.getTeacherId())) {
+                    throw new BusinessException(403, "无权限删除该指标");
+                }
+            }
+        }
+        // 管理员可以删除所有指标（包括系统指标）
+        
         indicatorService.delete(id);
         return Result.success();
     }
@@ -126,6 +173,27 @@ public class EvaluationIndicatorController {
         }
         
         return Result.success();
+    }
+
+    /**
+     * 查询系统标准指标（teacher_id=0）
+     */
+    @GetMapping("/system")
+    public Result<List<EvaluationIndicator>> getSystemIndicators() {
+        return Result.success(indicatorService.getSystemTemplate());
+    }
+
+    /**
+     * 查询指定教师的自定义指标
+     */
+    @GetMapping("/by-teacher/{teacherId}")
+    public Result<List<EvaluationIndicator>> getTeacherCustomIndicators(@PathVariable Long teacherId) {
+        List<EvaluationIndicator> list = indicatorService.listByTeacherId(teacherId);
+        // 只返回自定义指标
+        list = list.stream()
+            .filter(i -> i.getIsSystem() != null && i.getIsSystem() == 0)
+            .collect(java.util.stream.Collectors.toList());
+        return Result.success(list);
     }
 
     /**

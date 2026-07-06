@@ -49,9 +49,9 @@
           </el-menu-item>
           <el-menu-item v-if="role === 'teacher' || role === 'admin'" index="/evaluate">
             <el-icon><Star /></el-icon>
-            <span>AI评分</span>
+            <span>{{ role === 'admin' ? '评分与报表' : 'AI评分' }}</span>
           </el-menu-item>
-          <el-menu-item v-if="role === 'teacher' || role === 'admin'" index="/report">
+          <el-menu-item v-if="role === 'teacher'" index="/report">
             <el-icon><DataAnalysis /></el-icon>
             <span>报表中心</span>
           </el-menu-item>

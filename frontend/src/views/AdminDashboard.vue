@@ -77,7 +77,7 @@
       <!-- 成果状态分布 -->
       <el-col :span="10">
         <el-card shadow="hover">
-          <template #header><span class="card-title">🔄 成果处理状态</span></template>
+          <template #header><span class="card-title">🔄 成果评价状态</span></template>
           <div ref="statusChartRef" style="height: 300px"></div>
         </el-card>
       </el-col>
@@ -180,7 +180,7 @@ const quickLinks = [
   { path: '/user-manage', icon: '', label: '用户管理' },
   { path: '/course', icon: '📚', label: '课程管理' },
   { path: '/task', icon: '📝', label: '实训任务' },
-  { path: '/report', icon: '📊', label: '报表中心' },
+  { path: '/evaluate', icon: '📊', label: '评分与报表' },
   { path: '/schedule-manage', icon: '📅', label: '课程表管理' }
 ]
 
@@ -208,8 +208,7 @@ const loadRecent = async () => {
 }
 
 const statusTagType = (text) => {
-  if (text === '待核查') return 'warning'
-  if (text === '已核查') return 'info'
+  if (text === '待评价') return 'warning'
   if (text === '已评价') return 'success'
   return ''
 }

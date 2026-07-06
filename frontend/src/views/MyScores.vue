@@ -178,7 +178,7 @@ const courseScores = computed(() => {
     )
     
     // 状态文本映射
-    const statusMap = { 0: '待核查', 1: '已核查', 2: '已评分' }
+    const statusMap = { 0: '待评价', 1: '评价中', 2: '已评价' }
     
     course.tasks.get(taskId).results.push({
       ...result,

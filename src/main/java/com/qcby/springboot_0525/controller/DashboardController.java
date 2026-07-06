@@ -242,4 +242,62 @@ public class DashboardController {
     public Result<List<Map<String, Object>>> getRecentSubmissions() {
         return Result.success(dashboardMapper.getRecentSubmissions());
     }
+
+    // ============ 管理员评价/报表统计 ============
+
+    /**
+     * 管理员-AI评分总览统计
+     */
+    @GetMapping("/admin/evaluation/stats")
+    public Result<Map<String, Object>> getAdminEvaluationStats() {
+        return Result.success(dashboardMapper.getAdminEvaluationStats());
+    }
+
+    /**
+     * 管理员-按任务评分摘要
+     */
+    @GetMapping("/admin/evaluation/by-task")
+    public Result<List<Map<String, Object>>> getEvaluationByTask() {
+        return Result.success(dashboardMapper.getEvaluationByTask());
+    }
+
+    /**
+     * 管理员-按教师评分摘要
+     */
+    @GetMapping("/admin/evaluation/by-teacher")
+    public Result<List<Map<String, Object>>> getEvaluationByTeacher() {
+        return Result.success(dashboardMapper.getEvaluationByTeacher());
+    }
+
+    /**
+     * 管理员-报表总览统计
+     */
+    @GetMapping("/admin/report/stats")
+    public Result<Map<String, Object>> getAdminReportStats() {
+        return Result.success(dashboardMapper.getAdminReportStats());
+    }
+
+    /**
+     * 管理员-各任务报告平均分对比
+     */
+    @GetMapping("/admin/report/by-task")
+    public Result<List<Map<String, Object>>> getReportScoreByTask() {
+        return Result.success(dashboardMapper.getReportScoreByTask());
+    }
+
+    /**
+     * 管理员-各教师报告平均分对比
+     */
+    @GetMapping("/admin/report/by-teacher")
+    public Result<List<Map<String, Object>>> getReportScoreByTeacher() {
+        return Result.success(dashboardMapper.getReportScoreByTeacher());
+    }
+
+    /**
+     * 管理员-按任务组合统计（AI评分+报告）
+     */
+    @GetMapping("/admin/combined/task-stats")
+    public Result<List<Map<String, Object>>> getCombinedTaskStats() {
+        return Result.success(dashboardMapper.getCombinedTaskStats());
+    }
 }

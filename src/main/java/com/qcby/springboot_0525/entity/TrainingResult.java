@@ -26,7 +26,7 @@ public class TrainingResult {
     private String parsedContent;
     /** 上传时间 */
     private Date uploadTime;
-    /** 状态：0-待核查，1-已核查，2-已评价 */
+    /** 状态：0-待评价，1-评价中，2-已评价 */
     private Integer status;
     /** 创建时间 */
     private Date createTime;

@@ -72,7 +72,7 @@ public interface DashboardMapper {
     /** 课程总数 */
     int countAllCourses();
 
-    /** 待核查成果数（status=0） */
+    /** 待评价成果数（status=0） */
     int countPendingResults();
 
     /** 近30天每日成果提交量 */
@@ -84,9 +84,32 @@ public interface DashboardMapper {
     /** 全系统成绩分布（按分数段） */
     List<Map<String, Object>> getSystemScoreDistribution();
 
-    /** 成果状态分布（待核查/已核查/已评价） */
+    /** 成果状态分布（待评价/已评价） */
     List<Map<String, Object>> getResultStatusDistribution();
 
     /** 最近10条提交记录 */
     List<Map<String, Object>> getRecentSubmissions();
+
+    // ============ 管理员评价/报表统计 ============
+
+    /** AI评分总览统计(总成果数、已评分数、待评分数、平均AI分) */
+    Map<String, Object> getAdminEvaluationStats();
+
+    /** 按任务分组的评分摘要 */
+    List<Map<String, Object>> getEvaluationByTask();
+
+    /** 按教师分组的评分摘要 */
+    List<Map<String, Object>> getEvaluationByTeacher();
+
+    /** 报表总览统计(总报告数、平均最终分、教师已评分率) */
+    Map<String, Object> getAdminReportStats();
+
+    /** 各任务报告平均分对比 */
+    List<Map<String, Object>> getReportScoreByTask();
+
+    /** 各教师报告平均分对比 */
+    List<Map<String, Object>> getReportScoreByTeacher();
+
+    /** 按任务维度的组合统计（AI评分 + 报告评分） */
+    List<Map<String, Object>> getCombinedTaskStats();
 }

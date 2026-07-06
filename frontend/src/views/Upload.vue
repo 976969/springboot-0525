@@ -74,8 +74,8 @@
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag v-if="row.status === 0" type="info">待处理</el-tag>
-            <el-tag v-else-if="row.status === 1" type="warning">已核查</el-tag>
+            <el-tag v-if="row.status === 0" type="info">待评价</el-tag>
+            <el-tag v-else-if="row.status === 1" type="warning">评价中</el-tag>
             <el-tag v-else-if="row.status === 2" type="success">已评价</el-tag>
             <el-tag v-else>未知</el-tag>
           </template>

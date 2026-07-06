@@ -1,8 +1,96 @@
 <!--
-  评价指标管理页面（指标CRUD、AI生成、权重重置、配比展示）
+  评价指标管理页面
+  管理员：分区展示（系统标准指标 + 教师自定义指标查看）
+  教师：指标CRUD、AI生成、权重重置、配比展示
 -->
 <template>
-  <el-card>
+  <!-- ==================== 管理员视图 ==================== -->
+  <div v-if="userRole === 'admin'">
+    <!-- 区域一：系统标准指标 -->
+    <el-card style="margin-bottom: 20px;">
+      <template #header>
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <div>
+            <span style="font-weight: bold; font-size: 16px;">系统标准指标</span>
+            <el-tag type="danger" size="small" style="margin-left: 8px;">全局</el-tag>
+          </div>
+          <el-button type="primary" @click="openAddSystem">新增系统指标</el-button>
+        </div>
+      </template>
+      <p style="margin: 0 0 15px; color: #909399; font-size: 13px;">
+        系统标准指标为全局模板，教师首次登录时自动复制。管理员可修改系统指标，修改后不影响教师已有的副本。
+      </p>
+      <el-table :data="systemIndicators" border stripe v-loading="systemLoading">
+        <el-table-column type="index" label="序号" width="60" align="center" />
+        <el-table-column prop="name" label="指标名称" />
+        <el-table-column prop="category" label="分类" width="120" />
+        <el-table-column label="权重" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag size="small">{{ row.defaultWeight }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="description" label="描述" show-overflow-tooltip />
+        <el-table-column label="操作" width="160">
+          <template #default="{ row }">
+            <el-button size="small" type="primary" @click="openEditSystem(row)">编辑</el-button>
+            <el-button size="small" type="danger" @click="handleDeleteSystem(row.id)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
+    <!-- 区域二：教师自定义指标 -->
+    <el-card>
+      <template #header>
+        <div>
+          <span style="font-weight: bold; font-size: 16px;">教师自定义指标</span>
+          <el-tag type="success" size="small" style="margin-left: 8px;">查看</el-tag>
+        </div>
+      </template>
+      <p style="margin: 0 0 15px; color: #909399; font-size: 13px;">
+        查看各教师自行添加的自定义评价指标。
+      </p>
+      <div style="margin-bottom: 15px; display: flex; gap: 15px; align-items: center">
+        <el-select 
+          v-model="selectedTeacher" 
+          placeholder="选择教师查看其自定义指标" 
+          clearable 
+          style="width: 200px"
+          @change="loadTeacherCustomIndicators"
+        >
+          <el-option 
+            v-for="teacher in teacherList" 
+            :key="teacher.id" 
+            :label="teacher.realName" 
+            :value="teacher.id" 
+          />
+        </el-select>
+        <el-tag v-if="selectedTeacher && teacherCustomIndicators.length > 0" type="info">
+          共 {{ teacherCustomIndicators.length }} 个自定义指标
+        </el-tag>
+      </div>
+
+      <div v-if="!selectedTeacher" style="text-align: center; padding: 40px; color: #909399;">
+        <el-icon style="font-size: 48px; margin-bottom: 10px;"><User /></el-icon>
+        <p>请选择教师查看其自定义指标</p>
+      </div>
+
+      <el-table v-else :data="teacherCustomIndicators" border stripe v-loading="teacherLoading">
+        <el-table-column type="index" label="序号" width="60" align="center" />
+        <el-table-column prop="name" label="指标名称" />
+        <el-table-column prop="category" label="分类" width="120" />
+        <el-table-column label="权重" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag size="small">{{ row.defaultWeight }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="description" label="描述" show-overflow-tooltip />
+      </el-table>
+    </el-card>
+  </div>
+
+  <!-- ==================== 教师视图 ==================== -->
+  <el-card v-else>
     <template #header>
       <div style="display: flex; justify-content: space-between; align-items: center">
         <span>评价指标管理</span>
@@ -13,30 +101,9 @@
       </div>
     </template>
     
-    <!-- 管理员筛选条件 -->
-    <div v-if="userRole === 'admin'" style="margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center">
-      <el-select 
-        v-model="filterTeacher" 
-        placeholder="选择教师" 
-        clearable 
-        style="width: 150px"
-        @change="() => { pageNum = 1; loadIndicators() }"
-      >
-        <el-option 
-          v-for="teacher in teacherList" 
-          :key="teacher.id" 
-          :label="teacher.realName" 
-          :value="teacher.id" 
-        />
-      </el-select>
-      <el-button @click="filterTeacher = ''; pageNum = 1; loadIndicators()">重置</el-button>
-    </div>
     <el-table :data="tableData" border stripe v-loading="loading">
-      <!-- 序号列 -->
       <el-table-column type="index" label="序号" width="60" align="center" :index="(i) => (pageNum - 1) * pageSize + i + 1" />
-      
       <el-table-column prop="name" label="指标名称" />
-      <el-table-column prop="teacherName" label="归属教师" v-if="userRole === 'admin'" />
       <el-table-column prop="category" label="分类" width="120" />
       <el-table-column label="权重" width="100" align="center">
         <template #default="{ row }">
@@ -74,7 +141,6 @@
       </el-table-column>
     </el-table>
     
-    <!-- 分页组件 -->
     <el-pagination
       v-model:current-page="pageNum"
       v-model:page-size="pageSize"
@@ -86,13 +152,12 @@
       @current-change="loadIndicators"
     />
     
-    <!-- 权重汇总 -->
     <div style="margin-top: 20px; padding: 12px 16px; background: #f5f7fa; border-radius: 6px; display: flex; align-items: center; gap: 12px;">
       <el-tag type="info" effect="dark">
         权重总和: {{ totalWeight }}
       </el-tag>
       <span style="color: #606266; font-size: 13px;">
-        实际占比 = 各指标权重 ÷ {{ totalWeight }}，系统自动归一化计算总分
+        实际占比 = 各指标权重 / {{ totalWeight }}，系统自动归一化计算总分
       </span>
     </div>
 
@@ -121,7 +186,6 @@
         <span v-if="aiLoading" style="color: #e6a23c; font-size: 13px;">AI 正在分析，请稍候（约10-30秒）...</span>
       </div>
 
-      <!-- AI 生成结果 -->
       <div v-if="aiResult" style="margin-top: 16px; padding: 14px; background: #f0f9eb; border-radius: 6px; border: 1px solid #e1f3d8;">
         <div style="font-weight: bold; margin-bottom: 8px; color: #67c23a;">AI 建议</div>
         <p style="margin: 0 0 10px; color: #606266; font-size: 14px;">{{ aiResult.suggestion }}</p>
@@ -138,18 +202,20 @@
       <div ref="chartRef" style="width: 100%; height: 360px;"></div>
     </div>
   </el-card>
-  <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑评价指标' : '新增评价指标'" width="500px">
+
+  <!-- ==================== 通用对话框 ==================== -->
+  <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
     <el-form :model="form" label-width="80px">
       <el-form-item label="指标名称" required>
-        <el-input v-model="form.name" placeholder="如：代码质量" />
+        <el-input v-model="form.name" placeholder="如：代码质量" :disabled="isEditSystemForTeacher" />
       </el-form-item>
       <el-form-item label="分类" required>
-        <el-input v-model="form.category" placeholder="如：技术能力" />
+        <el-input v-model="form.category" placeholder="如：技术能力" :disabled="isEditSystemForTeacher" />
       </el-form-item>
       <el-form-item label="权重" required>
         <el-input-number v-model="form.defaultWeight" :min="0" :max="100" />
       </el-form-item>
-      <el-form-item label="类型" required>
+      <el-form-item v-if="userRole === 'admin' && !isEdit" label="类型" required>
         <el-select v-model="form.isSystem" placeholder="选择类型">
           <el-option label="系统指标" :value="1" />
           <el-option label="自定义" :value="0" />
@@ -167,16 +233,25 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import request from '../utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as echarts from 'echarts'
 
 const userRole = ref('')
 const teacherList = ref([])
-const filterTeacher = ref('')
+
+// 管理员相关
+const systemIndicators = ref([])
+const systemLoading = ref(false)
+const selectedTeacher = ref('')
+const teacherCustomIndicators = ref([])
+const teacherLoading = ref(false)
+
+// 教师相关
 const dialogVisible = ref(false)
 const isEdit = ref(false)
+const isEditSystemForTeacher = ref(false)
 const tableData = ref([])
 const loading = ref(false)
 const submitting = ref(false)
@@ -271,6 +346,13 @@ const defaultForm = {
 }
 const form = reactive({ ...defaultForm })
 
+const dialogTitle = computed(() => {
+  if (userRole.value === 'admin') {
+    return isEdit.value ? '编辑系统指标' : '新增系统指标'
+  }
+  return isEdit.value ? '编辑评价指标' : '新增评价指标'
+})
+
 // 加载教师列表
 const loadTeachers = async () => {
   try {
@@ -281,15 +363,68 @@ const loadTeachers = async () => {
   }
 }
 
-// 加载评价指标
+// ========== 管理员方法 ==========
+
+const loadSystemIndicators = async () => {
+  systemLoading.value = true
+  try {
+    const res = await request.get('/indicator/system')
+    systemIndicators.value = res.data || []
+  } catch (e) {
+    console.error('加载系统指标失败:', e)
+  } finally {
+    systemLoading.value = false
+  }
+}
+
+const loadTeacherCustomIndicators = async () => {
+  if (!selectedTeacher.value) {
+    teacherCustomIndicators.value = []
+    return
+  }
+  teacherLoading.value = true
+  try {
+    const res = await request.get(`/indicator/by-teacher/${selectedTeacher.value}`)
+    teacherCustomIndicators.value = res.data || []
+  } catch (e) {
+    console.error('加载教师自定义指标失败:', e)
+  } finally {
+    teacherLoading.value = false
+  }
+}
+
+const openAddSystem = () => {
+  isEdit.value = false
+  Object.assign(form, { ...defaultForm, isSystem: 1 })
+  dialogVisible.value = true
+}
+
+const openEditSystem = (row) => {
+  isEdit.value = true
+  Object.assign(form, row)
+  dialogVisible.value = true
+}
+
+const handleDeleteSystem = async (id) => {
+  try {
+    await ElMessageBox.confirm('确定删除该系统指标？删除后新教师登录将不再自动获得此指标。', '提示', { type: 'warning' })
+    await request.delete(`/indicator/${id}`)
+    ElMessage.success('删除成功')
+    loadSystemIndicators()
+  } catch (e) {
+    if (e !== 'cancel') console.error('删除失败:', e)
+  }
+}
+
+// ========== 教师方法 ==========
+
 const loadIndicators = async () => {
   loading.value = true
   try {
     const res = await request.get('/indicator/page', {
       params: {
         pageNum: pageNum.value,
-        pageSize: pageSize.value,
-        teacherId: filterTeacher.value || undefined
+        pageSize: pageSize.value
       }
     })
     tableData.value = res.data.list || []
@@ -303,21 +438,20 @@ const loadIndicators = async () => {
   }
 }
 
-// 打开新增对话框
 const openAdd = () => {
   isEdit.value = false
+  isEditSystemForTeacher.value = false
   Object.assign(form, { ...defaultForm })
   dialogVisible.value = true
 }
 
-// 打开编辑对话框
 const openEdit = (row) => {
   isEdit.value = true
+  isEditSystemForTeacher.value = row.isSystem === 1
   Object.assign(form, row)
   dialogVisible.value = true
 }
 
-// 提交表单
 const handleSubmit = async () => {
   if (!form.name || !form.category) {
     ElMessage.warning('请填写必填项')
@@ -334,7 +468,11 @@ const handleSubmit = async () => {
       ElMessage.success('新增成功')
     }
     dialogVisible.value = false
-    loadIndicators()
+    if (userRole.value === 'admin') {
+      loadSystemIndicators()
+    } else {
+      loadIndicators()
+    }
   } catch (e) {
     console.error('操作失败:', e)
     ElMessage.error('操作失败')
@@ -343,7 +481,6 @@ const handleSubmit = async () => {
   }
 }
 
-// 重置权重
 const handleResetWeights = async () => {
   try {
     await ElMessageBox.confirm(
@@ -359,7 +496,6 @@ const handleResetWeights = async () => {
   }
 }
 
-// AI智能生成指标
 const handleAiGenerate = async () => {
   if (!aiRequirements.value.trim()) {
     ElMessage.warning('请输入您的评分需求')
@@ -384,7 +520,6 @@ const handleAiGenerate = async () => {
   }
 }
 
-// 删除指标
 const handleDelete = async (id) => {
   try {
     await ElMessageBox.confirm('确定删除该指标？', '提示', { type: 'warning' })
@@ -392,7 +527,7 @@ const handleDelete = async (id) => {
     ElMessage.success('删除成功')
     loadIndicators()
   } catch (e) {
-    console.error('删除失败:', e)
+    if (e !== 'cancel') console.error('删除失败:', e)
   }
 }
 
@@ -401,7 +536,9 @@ onMounted(() => {
   userRole.value = userInfo.role
   if (userRole.value === 'admin') {
     loadTeachers()
+    loadSystemIndicators()
+  } else {
+    loadIndicators()
   }
-  loadIndicators()
 })
 </script>
