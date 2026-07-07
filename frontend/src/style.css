@@ -8,6 +8,7 @@
 
 body {
   font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', system-ui, -apple-system, sans-serif;
+  font-size: 15px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #303133;
@@ -28,7 +29,7 @@ body {
 
 /* 表格 */
 .el-table {
-  font-size: 13px;
+  font-size: 14px;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -42,18 +43,33 @@ body {
 .el-button {
   border-radius: 8px;
   font-weight: 500;
+  font-size: 14px;
   letter-spacing: 0.3px;
 }
 
+/* 卡片标题 */
+.el-card__header {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* 表单标签 */
+.el-form-item__label {
+  font-size: 14px;
+}
+
 /* 输入框 */
-.el-input__wrapper {
-  border-radius: 8px;
-  transition: all 0.2s;
+.el-input__inner,
+.el-textarea__inner {
+  font-size: 14px;
 }
 
 /* 下拉选择器 */
 .el-select .el-input__wrapper {
   border-radius: 8px;
+}
+.el-select-dropdown__item {
+  font-size: 14px;
 }
 
 /* 标签圆角 */
@@ -64,6 +80,7 @@ body {
 /* 分页器 */
 .el-pagination {
   font-weight: 500;
+  font-size: 14px;
 }
 
 /* 对话框 */
@@ -73,11 +90,16 @@ body {
 .el-dialog__header {
   padding: 20px 24px 10px;
   font-weight: 600;
+  font-size: 17px;
+}
+.el-dialog__body {
+  font-size: 15px;
 }
 
 /* 菜单项过渡 */
 .el-menu-item {
   transition: all 0.2s ease;
+  font-size: 15px;
 }
 .el-menu-item:hover {
   background-color: rgba(102, 187, 106, 0.08) !important;
@@ -85,12 +107,13 @@ body {
 
 /* 面包屑 */
 .el-breadcrumb {
-  font-size: 13px;
+  font-size: 14px;
 }
 
 /* 标签页 */
 .el-tabs__item {
   font-weight: 500;
+  font-size: 15px;
 }
 
 /* 空状态 */

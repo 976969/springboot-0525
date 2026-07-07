@@ -324,7 +324,7 @@ onMounted(loadScores)
   border-left: 3px solid #67c23a;
   border-radius: 4px;
   font-weight: 500;
-  font-size: 13px;
+  font-size: 14px;
   color: #606266;
 }
 

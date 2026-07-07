@@ -14,7 +14,7 @@
           <p>今天是你学习的第 <span class="highlight">{{ studyDays }}</span> 天</p>
         </div>
         <div class="welcome-avatar">
-          <el-avatar :size="80" icon="UserFilled" />
+          <el-avatar :size="80" :src="userStore.userInfo.avatar || ''" icon="UserFilled" />
         </div>
       </div>
     </el-card>

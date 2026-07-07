@@ -215,9 +215,9 @@
           <el-table-column label="AI/教师占比" width="220" align="center">
             <template #default="{ row }">
               <div style="display: flex; align-items: center; gap: 4px;">
-                <span style="font-size: 12px; color: #409eff; min-width: 30px; text-align: right;">AI {{ 10 - (row.teacherScoreRatio ?? 0) }}</span>
+                <span style="font-size: 13px; color: #409eff; min-width: 30px; text-align: right;">AI {{ 10 - (row.teacherScoreRatio ?? 0) }}</span>
                 <el-slider v-model="row.teacherScoreRatio" :min="0" :max="10" :step="1" :show-tooltip="false" style="flex: 1;" @change="handleRatioChange(row)" />
-                <span style="font-size: 12px; color: #67c23a; min-width: 40px;">教师 {{ row.teacherScoreRatio ?? 0 }}</span>
+                <span style="font-size: 13px; color: #67c23a; min-width: 40px;">教师 {{ row.teacherScoreRatio ?? 0 }}</span>
               </div>
             </template>
           </el-table-column>
@@ -829,7 +829,7 @@ onBeforeUnmount(() => {
 }
 .stat-info { text-align: left; }
 .stat-value { font-size: 28px; font-weight: bold; color: #303133; line-height: 1; }
-.stat-label { font-size: 13px; color: #909399; margin-top: 6px; }
+.stat-label { font-size: 14px; color: #909399; margin-top: 6px; }
 .card-title { font-weight: bold; font-size: 15px; color: #303133; }
 :deep(.el-card) { border-radius: 12px; }
 </style>

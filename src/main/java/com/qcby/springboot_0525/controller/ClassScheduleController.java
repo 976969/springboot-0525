@@ -26,17 +26,20 @@ public class ClassScheduleController {
     private CourseMapper courseMapper;
 
     @GetMapping("/list")
-    public Result<List<ClassSchedule>> list() {
+    public Result<List<ClassSchedule>> list(@RequestParam(required = false) Long teacherId) {
         String role = (String) StpUtil.getSession().get("role");
         Object realIdObj = StpUtil.getSession().get("realId");
 
         List<ClassSchedule> list;
         if ("teacher".equals(role) && realIdObj != null) {
-            Long teacherId = Long.valueOf(realIdObj.toString());
-            list = scheduleService.listByTeacherId(teacherId);
+            Long teacherIdSession = Long.valueOf(realIdObj.toString());
+            list = scheduleService.listByTeacherId(teacherIdSession);
         } else if ("student".equals(role) && realIdObj != null) {
             Long studentId = Long.valueOf(realIdObj.toString());
             list = scheduleService.listByStudentId(studentId);
+        } else if ("admin".equals(role) && teacherId != null) {
+            // 管理员可按教师筛选
+            list = scheduleService.listByTeacherId(teacherId);
         } else {
             list = scheduleService.listAll();
         }

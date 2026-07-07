@@ -17,7 +17,7 @@
           <el-button type="primary" @click="openAddSystem">新增系统指标</el-button>
         </div>
       </template>
-      <p style="margin: 0 0 15px; color: #909399; font-size: 13px;">
+      <p style="margin: 0 0 15px; color: #909399; font-size: 14px;">
         系统标准指标为全局模板，教师首次登录时自动复制。管理员可修改系统指标，修改后不影响教师已有的副本。
       </p>
       <el-table :data="systemIndicators" border stripe v-loading="systemLoading">
@@ -47,7 +47,7 @@
           <el-tag type="success" size="small" style="margin-left: 8px;">查看</el-tag>
         </div>
       </template>
-      <p style="margin: 0 0 15px; color: #909399; font-size: 13px;">
+      <p style="margin: 0 0 15px; color: #909399; font-size: 14px;">
         查看各教师自行添加的自定义评价指标。
       </p>
       <div style="margin-bottom: 15px; display: flex; gap: 15px; align-items: center">
@@ -119,7 +119,7 @@
               :color="getWeightColor(row.defaultWeight)"
               style="flex: 1;"
             />
-            <span style="font-size: 13px; font-weight: bold; color: #303133; min-width: 40px; text-align: right;">
+            <span style="font-size: 14px; font-weight: bold; color: #303133; min-width: 40px; text-align: right;">
               {{ getWeightPercent(row.defaultWeight) }}%
             </span>
           </div>
@@ -156,7 +156,7 @@
       <el-tag type="info" effect="dark">
         权重总和: {{ totalWeight }}
       </el-tag>
-      <span style="color: #606266; font-size: 13px;">
+      <span style="color: #606266; font-size: 14px;">
         实际占比 = 各指标权重 / {{ totalWeight }}，系统自动归一化计算总分
       </span>
     </div>
@@ -169,7 +169,7 @@
           <el-tag type="danger" size="small" effect="plain">AI</el-tag>
         </div>
       </template>
-      <p style="margin: 0 0 12px; color: #909399; font-size: 13px;">
+      <p style="margin: 0 0 12px; color: #909399; font-size: 14px;">
         描述您的评分需求，AI 将自动调整指标权重并新增合适的评价维度。系统指标会保留，仅调整权重。
       </p>
       <el-input
@@ -183,14 +183,14 @@
         <el-button type="primary" @click="handleAiGenerate" :loading="aiLoading">
           {{ aiLoading ? 'AI 生成中...' : 'AI 生成指标配置' }}
         </el-button>
-        <span v-if="aiLoading" style="color: #e6a23c; font-size: 13px;">AI 正在分析，请稍候（约10-30秒）...</span>
+        <span v-if="aiLoading" style="color: #e6a23c; font-size: 14px;">AI 正在分析，请稍候（约10-30秒）...</span>
       </div>
 
       <div v-if="aiResult" style="margin-top: 16px; padding: 14px; background: #f0f9eb; border-radius: 6px; border: 1px solid #e1f3d8;">
         <div style="font-weight: bold; margin-bottom: 8px; color: #67c23a;">AI 建议</div>
         <p style="margin: 0 0 10px; color: #606266; font-size: 14px;">{{ aiResult.suggestion }}</p>
         <div style="font-weight: bold; margin-bottom: 8px; color: #409eff;">操作记录</div>
-        <ul style="margin: 0; padding-left: 20px; color: #606266; font-size: 13px;">
+        <ul style="margin: 0; padding-left: 20px; color: #606266; font-size: 14px;">
           <li v-for="(action, idx) in aiResult.actions" :key="idx">{{ action }}</li>
         </ul>
       </div>

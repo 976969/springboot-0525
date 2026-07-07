@@ -138,7 +138,7 @@
               <el-button plain @click="$router.push(item.path)" style="width: 100%; height: 80px; border-radius: 8px;">
                 <div style="text-align: center">
                   <div style="font-size: 24px; margin-bottom: 4px">{{ item.icon }}</div>
-                  <div style="font-size: 13px">{{ item.label }}</div>
+                  <div style="font-size: 14px">{{ item.label }}</div>
                 </div>
               </el-button>
             </el-col>

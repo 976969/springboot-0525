@@ -1,3 +1,4 @@
+
 <!--
   AI练习题页面 - 学生根据已选课程生成AI练习题并自测
 -->
@@ -350,7 +351,7 @@ function getScoreClass(score) {
 .course-icon { width: 60px; height: 60px; border-radius: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0; }
 .course-info { flex: 1; min-width: 0; }
 .course-info h4 { margin: 0 0 4px 0; font-size: 16px; color: #303133; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.course-info .teacher { margin: 0 0 8px 0; font-size: 13px; color: #909399; }
+.course-info .teacher { margin: 0 0 8px 0; font-size: 14px; color: #909399; }
 .course-stats { display: flex; gap: 8px; flex-wrap: wrap; }
 .course-action { flex-shrink: 0; }
 
@@ -392,7 +393,7 @@ function getScoreClass(score) {
 .detail-item { padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
 .detail-item:last-child { border-bottom: none; }
 .detail-question { font-size: 14px; color: #303133; }
-.detail-answer { margin-top: 6px; font-size: 13px; color: #606266; display: flex; gap: 20px; }
+.detail-answer { margin-top: 6px; font-size: 14px; color: #606266; display: flex; gap: 20px; }
 .detail-explanation { margin-top: 6px; font-size: 13px; color: #909399; display: flex; align-items: center; gap: 4px; }
 .text-success { color: #67c23a; }
 .text-danger { color: #f56c6c; }

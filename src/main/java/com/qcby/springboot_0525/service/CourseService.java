@@ -47,4 +47,9 @@ public class CourseService {
     public void delete(Long id) {
         courseMapper.deleteById(id);
     }
+
+    /** 根据条件筛选课程列表（管理员用） */
+    public List<Course> listFiltered(String keyword, Long teacherId) {
+        return courseMapper.selectFiltered(keyword, teacherId);
+    }
 }

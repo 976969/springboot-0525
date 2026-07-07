@@ -29,4 +29,7 @@ public interface CourseMapper {
 
     /** 根据ID删除课程 */
     int deleteById(@Param("id") Long id);
+
+    /** 根据条件筛选课程列表（管理员用） */
+    List<Course> selectFiltered(@Param("keyword") String keyword, @Param("teacherId") Long teacherId);
 }

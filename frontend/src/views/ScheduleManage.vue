@@ -411,12 +411,13 @@ onMounted(async () => {
   min-width: 90px;
 }
 .timetable-container { overflow-x: auto; }
-.timetable { width: 100%; border-collapse: collapse; min-width: 800px; table-layout: fixed; }
+.timetable { width: 100%; border-collapse: collapse; min-width: 900px; table-layout: fixed; }
 .timetable th, .timetable td { border: 1px solid #e4e7ed; padding: 4px; text-align: center; vertical-align: middle; }
 .timetable th { background-color: #f5f7fa; font-weight: 600; color: #303133; height: 44px; }
 .timetable tr { height: 90px; }
 .timetable td { height: 90px; max-height: 90px; }
-.timetable .time-col { width: 140px; background-color: #f5f7fa; font-size: 13px; color: #606266; }
+.timetable .time-col { width: 150px; min-width: 150px; background-color: #f5f7fa; font-size: 13px; color: #606266; }
+.timetable th:not(.time-col) { width: calc((100% - 150px) / 7); }
 .schedule-cell { height: 90px; max-height: 90px; cursor: pointer; transition: background-color 0.2s; padding: 4px; overflow: hidden; box-sizing: border-box; }
 .schedule-cell:hover { background-color: #f5f7fa; }
 .schedule-cell.has-class { background-color: #ecf5ff; cursor: pointer; }

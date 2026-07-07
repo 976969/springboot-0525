@@ -4,25 +4,42 @@
 <template>
   <div>
     <!-- 提交成果区域 -->
-    <el-card>
+    <el-card shadow="hover">
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center">
-          <span>实训成果提交</span>
-          <el-tag type="success" size="small">💡 推荐提交 Word 文档(.docx)</el-tag>
+          <span style="font-size: 16px; font-weight: 600">📤 实训成果提交</span>
+          <el-tag type="success" size="small" effect="plain">推荐 Word 文档(.docx)</el-tag>
         </div>
       </template>
-      <el-form label-width="100px" style="max-width: 600px">
-        <el-form-item label="实训任务" required>
-          <div style="display: flex; gap: 10px; align-items: center; width: 100%;">
-            <el-button type="primary" @click="openTaskDialog">选择实训任务</el-button>
-            <span v-if="selectedTask" class="selected-task-info">
-              <el-tag type="success" size="small">{{ selectedTask.courseName }}</el-tag>
-              {{ selectedTask.title }}
-            </span>
-            <span v-else style="color: #999; font-size: 13px;">请点击按钮选择实训任务</span>
+
+      <!-- 步骤引导 -->
+      <div class="upload-steps">
+        <!-- 步骤 1：选择任务 -->
+        <div class="step-item" :class="{ 'step-active': selectedTask }" @click="openTaskDialog">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">选择实训任务</div>
+            <div v-if="selectedTask" class="step-desc">
+              <el-tag type="success" size="small" effect="plain">{{ selectedTask.courseName }}</el-tag>
+              <span class="task-name">{{ selectedTask.title }}</span>
+            </div>
+            <div v-else class="step-desc empty">点击此处选择要提交的任务</div>
           </div>
-        </el-form-item>
-        <el-form-item label="选择文件" required>
+          <el-icon class="step-arrow" :size="20" color="#c0c4cc"><ArrowRight /></el-icon>
+        </div>
+
+        <!-- 步骤 2：上传文件 -->
+        <div class="step-item" :class="{ 'step-active': form.file }" v-if="selectedTask">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">上传文件</div>
+            <div v-if="form.file" class="step-desc">
+              <el-icon color="#67c23a"><Document /></el-icon>
+              <span class="file-name">{{ form.file.name }}</span>
+              <span class="file-size">{{ formatSize(form.file.size) }}</span>
+            </div>
+            <div v-else class="step-desc empty">点击右侧按钮选择文件</div>
+          </div>
           <el-upload
             ref="uploadRef"
             :auto-upload="false"
@@ -31,34 +48,79 @@
             :on-remove="handleFileRemove"
             :file-list="selectedFiles"
             accept=".doc,.docx,.pdf,.jpg,.jpeg,.png"
+            class="inline-upload"
           >
-            <el-button type="primary">选择文件</el-button>
-            <template #tip>
-              <div class="el-upload__tip">
-                <div style="margin-bottom: 8px;">支持 Word/PDF/图片格式，单个文件不超过50MB</div>
-                <el-alert 
-                  title="💡 AI评分格式建议" 
-                  type="info" 
-                  :closable="false" 
-                  show-icon
-                  style="margin-top: 8px;"
-                >
-                  <div style="line-height: 1.8;">
-                    <strong>推荐格式：</strong>Word文档(.docx) → AI识别率最高<br/>
-                    <strong>支持格式：</strong>.doc / .docx / .pdf / .jpg / .jpeg / .png<br/>
-                    <strong>注意事项：</strong>图片格式(jpg/png)无法识别手写内容，建议使用Word或PDF
-                  </div>
-                </el-alert>
-              </div>
-            </template>
+            <el-button type="primary" size="default">
+              {{ form.file ? '更换文件' : '选择文件' }}
+            </el-button>
           </el-upload>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="success" @click="submitUpload" :loading="uploading" :disabled="!form.taskId || !form.file">
+        </div>
+
+        <!-- 步骤 3：提交 -->
+        <div class="step-item step-submit" :class="{ 'step-ready': form.taskId && form.file }" v-if="selectedTask">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-title">确认提交</div>
+            <div class="step-desc" :class="{ empty: !form.taskId || !form.file }">
+              <template v-if="form.taskId && form.file">
+                <el-icon color="#67c23a"><CircleCheck /></el-icon>
+                所有信息已就绪，点击下方按钮提交
+              </template>
+              <template v-else>
+                请先完成以上步骤
+              </template>
+            </div>
+          </div>
+          <el-button
+            type="success"
+            size="large"
+            @click="submitUpload"
+            :loading="uploading"
+            :disabled="!form.taskId || !form.file"
+            class="submit-btn-inline"
+          >
+            <el-icon style="margin-right: 6px"><UploadFilled /></el-icon>
             提交成果
           </el-button>
-        </el-form-item>
-      </el-form>
+        </div>
+      </div>
+
+      <div class="submit-hint">提交后将由 AI 自动评分，请耐心等待结果</div>
+
+      <!-- 格式说明面板 -->
+      <el-collapse v-model="formatTipVisible" class="format-collapse">
+        <el-collapse-item name="tips">
+          <template #title>
+            <span style="font-size: 14px; color: #909399">📋 文件格式说明</span>
+          </template>
+          <div class="format-tips">
+            <div class="tip-row">
+              <el-icon color="#409eff" :size="16"><CircleCheck /></el-icon>
+              <div>
+                <strong>推荐格式：</strong>Word文档(.docx) — AI识别率最高
+              </div>
+            </div>
+            <div class="tip-row">
+              <el-icon color="#67c23a" :size="16"><CircleCheck /></el-icon>
+              <div>
+                <strong>支持格式：</strong>.doc / .docx / .pdf / .jpg / .jpeg / .png
+              </div>
+            </div>
+            <div class="tip-row">
+              <el-icon color="#e6a23c" :size="16"><Warning /></el-icon>
+              <div>
+                <strong>注意事项：</strong>图片格式(jpg/png)无法识别手写内容，建议使用Word或PDF
+              </div>
+            </div>
+            <div class="tip-row">
+              <el-icon color="#909399" :size="16"><InfoFilled /></el-icon>
+              <div>
+                <strong>文件大小：</strong>单个文件不超过 50MB
+              </div>
+            </div>
+          </div>
+        </el-collapse-item>
+      </el-collapse>
     </el-card>
 
     <!-- 已提交记录 -->
@@ -176,7 +238,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Select, ArrowRight } from '@element-plus/icons-vue'
+import { Select, ArrowRight, Document, UploadFilled, CircleCheck, Warning, InfoFilled } from '@element-plus/icons-vue'
 import request from '../utils/request'
 
 const fileList = ref([])
@@ -203,6 +265,7 @@ const myResults = ref([])              // 学生已提交成果
 const selectedTask = ref(null)         // 当前选中的任务对象
 const tempSelectedTask = ref(null)     // 弹框中临时选中的任务
 const showExpired = ref(false)           // 是否展开已过期任务
+const formatTipVisible = ref([])          // 格式说明折叠面板
 
 // 已选课程ID集合
 const enrolledCourseIds = computed(() => new Set(myCourses.value.map(c => c.courseId)))
@@ -450,12 +513,162 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.selected-task-info {
+/* ============ 步骤引导 ============ */
+.upload-steps {
+  padding: 10px 0 10px;
+}
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  background: #fafafa;
+  border-radius: 10px;
+  border: 1px solid #ebeef5;
+  transition: all 0.3s;
+  margin-bottom: 0;
+}
+.step-item.step-active {
+  background: #f0f9eb;
+  border-color: #c2e7b0;
+}
+/* 步骤1整行可点击 */
+.step-item:first-child {
+  cursor: pointer;
+}
+.step-item:first-child:hover {
+  border-color: #409eff;
+  background: #ecf5ff;
+}
+.step-item:first-child.step-active:hover {
+  border-color: #c2e7b0;
+  background: #f0f9eb;
+}
+.step-number {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e4e7ed;
+  color: #909399;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+.step-active .step-number {
+  background: #67c23a;
+  color: #fff;
+}
+.step-content {
+  flex: 1;
+  min-width: 0;
+}
+.step-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 4px;
+}
+.step-desc {
   font-size: 14px;
+  color: #606266;
   display: flex;
   align-items: center;
   gap: 6px;
 }
+.step-desc.empty {
+  color: #c0c4cc;
+}
+.task-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-name {
+  font-weight: 500;
+  color: #303133;
+}
+.file-size {
+  color: #909399;
+  font-size: 13px;
+}
+.step-arrow {
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+.step-item:first-child:hover .step-arrow {
+  transform: translateX(4px);
+  color: #409eff !important;
+}
+.inline-upload {
+  display: inline-flex;
+}
+.inline-upload :deep(.el-upload) {
+  display: inline-flex;
+}
+
+/* ============ 步骤3：提交 ============ */
+.step-item.step-submit {
+  background: #f0f9eb;
+  border-color: #c2e7b0;
+  border-width: 2px;
+  margin-top: 4px;
+}
+.step-item.step-submit.step-ready {
+  background: #f0f9eb;
+  border-color: #67c23a;
+  box-shadow: 0 2px 12px rgba(103, 194, 58, 0.15);
+}
+.step-item.step-submit .step-number {
+  background: #67c23a;
+  color: #fff;
+}
+.submit-btn-inline {
+  padding: 12px 36px;
+  font-size: 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ============ 提交提示 ============ */
+.submit-hint {
+  text-align: center;
+  font-size: 13px;
+  color: #c0c4cc;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+/* ============ 格式说明 ============ */
+.format-collapse {
+  margin-top: 16px;
+  border: none;
+}
+.format-collapse :deep(.el-collapse-item__header) {
+  height: 36px;
+  line-height: 36px;
+}
+.format-tips {
+  padding: 4px 0 8px 8px;
+}
+.tip-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.6;
+}
+.tip-row strong {
+  color: #303133;
+}
+
+/* ============ 任务列表弹框 ============ */
 .task-list-container {
   max-height: 500px;
   overflow-y: auto;
@@ -469,7 +682,7 @@ onMounted(() => {
   border-bottom: 1px solid #ecf5ff;
 }
 .teacher-name {
-  font-size: 12px;
+  font-size: 13px;
   color: #909399;
 }
 .task-item {
@@ -505,7 +718,7 @@ onMounted(() => {
   margin-bottom: 4px;
 }
 .task-meta {
-  font-size: 12px;
+  font-size: 13px;
   color: #909399;
 }
 
@@ -522,7 +735,7 @@ onMounted(() => {
   padding: 8px 12px;
   cursor: pointer;
   color: #909399;
-  font-size: 13px;
+  font-size: 14px;
   user-select: none;
   transition: color 0.2s;
 }

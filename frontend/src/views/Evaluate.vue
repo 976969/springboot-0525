@@ -29,7 +29,7 @@
             <template #header>
               <div style="display: flex; justify-content: space-between; align-items: center">
                 <span class="card-title">各任务AI评分对比</span>
-                <span style="font-size: 12px; color: #909399">共 {{ combinedTaskStats.length }} 个任务，展示前 10</span>
+                <span style="font-size: 13px; color: #909399">共 {{ combinedTaskStats.length }} 个任务，展示前 10</span>
               </div>
             </template>
             <div ref="taskCompareChartRef" style="height: 300px" v-loading="chartLoading"></div>
@@ -46,7 +46,7 @@
                   <span style="font-size: 14px; color: #409eff; font-weight: bold">{{ aiCompletionRate }}%</span>
                 </div>
                 <el-progress :percentage="aiCompletionRate" :color="'#409eff'" :stroke-width="14" />
-                <div style="font-size: 12px; color: #909399; margin-top: 4px">已评分 {{ evalStats.scoredCount || 0 }} / 总成果 {{ evalStats.totalCount || 0 }}</div>
+                <div style="font-size: 13px; color: #909399; margin-top: 4px">已评分 {{ evalStats.scoredCount || 0 }} / 总成果 {{ evalStats.totalCount || 0 }}</div>
               </div>
               <!-- 报告生成进度 -->
               <div>
@@ -55,7 +55,7 @@
                   <span style="font-size: 14px; color: #67c23a; font-weight: bold">{{ reportRate }}%</span>
                 </div>
                 <el-progress :percentage="reportRate" :color="'#67c23a'" :stroke-width="14" />
-                <div style="font-size: 12px; color: #909399; margin-top: 4px">已生成报告 {{ reportStats.totalReports || 0 }} / 总成果 {{ evalStats.totalCount || 0 }}</div>
+                <div style="font-size: 13px; color: #909399; margin-top: 4px">已生成报告 {{ reportStats.totalReports || 0 }} / 总成果 {{ evalStats.totalCount || 0 }}</div>
               </div>
               <!-- 教师评分进度 -->
               <div style="margin-top: 28px">
@@ -852,7 +852,7 @@ onBeforeUnmount(() => {
 }
 .stat-info { text-align: left; }
 .stat-value { font-size: 28px; font-weight: bold; color: #303133; line-height: 1; }
-.stat-label { font-size: 13px; color: #909399; margin-top: 6px; }
+.stat-label { font-size: 14px; color: #909399; margin-top: 6px; }
 .card-title { font-weight: bold; font-size: 15px; color: #303133; }
 :deep(.el-card) { border-radius: 12px; }
 </style>

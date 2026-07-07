@@ -25,7 +25,9 @@ public class CourseController {
     @GetMapping("/page")
     public Result<PageResult<Course>> list(
             @RequestParam(defaultValue = "1") int pageNum,
-            @RequestParam(defaultValue = "10") int pageSize) {
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long teacherId) {
         PageHelper.startPage(pageNum, pageSize);
         
         // 根据角色过滤数据
@@ -35,10 +37,12 @@ public class CourseController {
         List<Course> list;
         if ("teacher".equals(role) && realIdObj != null) {
             // 教师只能看到自己的课程
-            Long teacherId = Long.valueOf(realIdObj.toString());
-            list = courseService.listByTeacherId(teacherId);
+            Long teacherIdSession = Long.valueOf(realIdObj.toString());
+            list = courseService.listByTeacherId(teacherIdSession);
+        } else if ("admin".equals(role)) {
+            // 管理员支持筛选
+            list = courseService.listFiltered(keyword, teacherId);
         } else {
-            // 管理员看到所有课程
             list = courseService.list();
         }
         

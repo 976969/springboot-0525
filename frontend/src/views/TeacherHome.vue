@@ -14,7 +14,7 @@
           <p>您今天有 <span class="highlight">{{ stats.pendingTasks || 0 }}</span> 个任务待批改</p>
         </div>
         <div class="welcome-avatar">
-          <el-avatar :size="80" icon="UserFilled" />
+          <el-avatar :size="80" :src="userStore.userInfo.avatar || ''" icon="UserFilled" />
         </div>
       </div>
     </el-card>
@@ -35,7 +35,7 @@
 
       <el-col :span="6">
         <el-card shadow="hover" class="stat-card">
-          <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">
+          <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)">
             👥
           </div>
           <div class="stat-info">
@@ -318,16 +318,16 @@ const initCharts = async () => {
         data: taskData.map(item => item.submissions),
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(240, 147, 251, 0.3)' },
-            { offset: 1, color: 'rgba(240, 147, 251, 0.05)' }
+            { offset: 0, color: 'rgba(102, 126, 234, 0.3)' },
+            { offset: 1, color: 'rgba(102, 126, 234, 0.05)' }
           ])
         },
         lineStyle: {
-          color: '#f093fb',
+          color: '#667eea',
           width: 3
         },
         itemStyle: {
-          color: '#f093fb'
+          color: '#667eea'
         }
       }]
     })
@@ -389,11 +389,11 @@ onMounted(async () => {
 }
 
 .welcome-card {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
   border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(240, 147, 251, 0.25);
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
 }
 
 .welcome-content {

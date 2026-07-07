@@ -25,4 +25,6 @@ public class Course {
 
     /** 关联查询字段：教师姓名 */
     private String teacherName;
+    /** 关联查询字段：选课人数 */
+    private Integer studentCount;
 }
