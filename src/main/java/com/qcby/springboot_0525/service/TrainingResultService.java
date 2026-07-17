@@ -15,12 +15,16 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 实训成果业务逻辑层（文件上传、覆盖提交）
  */
 @Service
 public class TrainingResultService {
+
+    private static final Logger log = LoggerFactory.getLogger(TrainingResultService.class);
 
     @Value("${file.upload-path}")
     private String uploadPath;
@@ -189,10 +193,12 @@ public class TrainingResultService {
      * 更新状态
      */
     public void updateStatus(Long id, Integer status) {
+        log.info("updateStatus: id={}, status={}", id, status);
         TrainingResult result = new TrainingResult();
         result.setId(id);
         result.setStatus(status);
-        resultMapper.updateById(result);
+        int rows = resultMapper.updateById(result);
+        log.info("updateStatus 影响行数: {}", rows);
     }
 
     public void delete(Long id) {

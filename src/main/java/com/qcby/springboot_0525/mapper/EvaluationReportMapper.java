@@ -15,8 +15,11 @@ public interface EvaluationReportMapper {
     /** 根据ID查询报告 */
     EvaluationReport selectById(@Param("id") Long id);
 
-    /** 查询所有报告列表 */
+    /** 查询所有报告列表（仅已发布） */
     List<EvaluationReport> selectList();
+
+    /** 查询所有报告（含草稿） */
+    List<EvaluationReport> selectAll();
 
     /** 根据任务ID查询报告列表 */
     List<EvaluationReport> selectByTaskId(@Param("taskId") Long taskId);

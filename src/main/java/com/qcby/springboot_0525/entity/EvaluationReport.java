@@ -19,14 +19,18 @@ public class EvaluationReport {
     private BigDecimal totalScore;
     /** 教师评分（整体评分） */
     private BigDecimal teacherScore;
-    /** 教师评分占比（0-10，表示AI评分占比） */
+    /** 教师评分占比（0~1，表示AI评分占比，前端展示时×10显示为0~10） */
     private BigDecimal teacherScoreRatio;
+    /** 教师评语 */
+    private String teacherComment;
     /** 评分教师ID */
     private Long teacherId;
     /** 报告数据（JSON格式） */
     private String reportData;
     /** 导出格式 */
     private String exportFormat;
+    /** 状态：0草稿(教师评分中) 1已发布(学生可见) */
+    private Integer status;
     /** 创建时间 */
     private Date createTime;
 

@@ -207,6 +207,13 @@ public class EvaluationIndicatorController {
             throw new BusinessException("请输入评分要求");
         }
 
+        // 获取当前登录教师ID
+        Long teacherId = 0L;
+        Object realIdObj = StpUtil.getSession().get("realId");
+        if (realIdObj != null) {
+            teacherId = Long.valueOf(realIdObj.toString());
+        }
+
         // 获取现有指标并格式化为描述文本
         List<EvaluationIndicator> existingList = indicatorService.list();
         StringBuilder sb = new StringBuilder();
@@ -281,6 +288,7 @@ public class EvaluationIndicatorController {
                     newInd.setDefaultWeight(weight);
                     newInd.setOriginalWeight(weight);
                     newInd.setIsSystem(0);
+                    newInd.setTeacherId(teacherId);
                     indicatorService.add(newInd);
                     actions.add("新增(自定义): " + name + " (权重=" + weight + ")");
                 } else {
@@ -292,6 +300,7 @@ public class EvaluationIndicatorController {
                     newInd.setDefaultWeight(weight);
                     newInd.setOriginalWeight(weight);
                     newInd.setIsSystem(0);
+                    newInd.setTeacherId(teacherId);
                     indicatorService.add(newInd);
                     actions.add("新增: " + name + " (权重=" + weight + ")");
                 }

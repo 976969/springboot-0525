@@ -56,8 +56,9 @@ sa-token:
 file:
   upload-path: ${UPLOAD_PATH:./uploads/}
 
-# 大模型API配置(硅基流动 - 免费)
+# 大模型API配置(DeepSeek)
 llm:
-  api-url: https://api.siliconflow.cn/v1/chat/completions
-  api-key: sk-oxggnbkwkzzkcjdlldxnuvxrwxztozghgiapdtxmtssezzeq
-  model: Qwen/Qwen2.5-14B-Instruct
+
+  api-url: https://api.deepseek.com/v1/chat/completions
+  api-key: sk-e3a4935729784a36902b0da9543b74af
+  model: deepseek-chat

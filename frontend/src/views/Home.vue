@@ -58,13 +58,13 @@
       </el-col>
 
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
+        <el-card shadow="hover" class="stat-card stat-card--warn">
           <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%)">
-            🏆
+            ⏳
           </div>
           <div class="stat-info">
-            <div class="stat-value">{{ stats.certificateCount || 0 }}</div>
-            <div class="stat-label">获得证书</div>
+            <div class="stat-value text-warn">{{ stats.pendingResults || 0 }}</div>
+            <div class="stat-label">待出分作业</div>
           </div>
         </el-card>
       </el-col>
@@ -175,7 +175,7 @@ const stats = reactive({
   courseCount: 0,
   completedTaskCount: 0,
   averageScore: 0,
-  certificateCount: 0
+  pendingResults: 0
 })
 
 // 学习天数(真实，从首次提交算起)
@@ -318,7 +318,8 @@ const initCharts = async () => {
       series: [{
         name: '完成度',
         type: 'pie',
-        radius: '60%',
+        radius: '50%',
+        center: ['60%', '50%'],
         data: completionData,
         emphasis: {
           itemStyle: {
@@ -328,7 +329,11 @@ const initCharts = async () => {
           }
         },
         label: {
-          formatter: '{b}\n{c}%'
+          formatter: '{b}\n{c}%',
+          avoidLabelOverlap: true,
+          labelLayout: {
+            hideOverlap: true
+          }
         }
       }]
     })
@@ -342,7 +347,7 @@ const initCharts = async () => {
     scoreChart.setOption({
       tooltip: {
         trigger: 'axis',
-        formatter: '{b}分<br/>人数: {c}'
+        formatter: '{b}分<br/>作业数：{c}'
       },
       grid: {
         left: '3%',
@@ -360,10 +365,10 @@ const initCharts = async () => {
       },
       yAxis: {
         type: 'value',
-        name: '人数'
+        name: '作业数'
       },
       series: [{
-        name: '人数',
+        name: '作业数',
         type: 'bar',
         data: scoreData.counts,
         itemStyle: {

@@ -68,53 +68,48 @@
     <el-empty v-if="courseScores.length === 0" description="暂无成绩数据" />
   </el-card>
 
-  <!-- 评价详情对话框 -->
-  <el-dialog v-model="detailVisible" :title="currentResult?.fileName + ' - 评价详情'" width="1100px" top="5vh">
-    <el-descriptions :column="2" border style="margin-bottom: 20px;">
-      <el-descriptions-item label="作业文件">{{ currentResult?.fileName }}</el-descriptions-item>
-      <el-descriptions-item label="上传时间">{{ currentResult?.uploadTime }}</el-descriptions-item>
+  <!-- 评价详情对话框（与教师端报表中心格式一致） -->
+  <el-dialog v-model="detailVisible" title="评价报告详情" width="900px" top="5vh">
+    <el-alert :title="'实训任务：' + (currentReport.taskTitle || currentResult?.taskTitle || '')" type="info" :closable="false" style="margin-bottom: 15px" />
+    <el-descriptions :column="2" border style="margin-bottom: 20px">
       <el-descriptions-item label="总分">
-        <el-tag type="primary" size="large">{{ currentResult?.totalScore || '未评分' }}</el-tag>
+        <el-tag :type="currentReport.totalScore >= 80 ? 'success' : currentReport.totalScore >= 60 ? 'warning' : 'danger'">
+          {{ currentReport.totalScore ? Number(currentReport.totalScore).toFixed(1) : '-' }}
+        </el-tag>
       </el-descriptions-item>
-      <el-descriptions-item label="状态">
-        <el-tag :type="getStatusType(currentResult?.status)">{{ currentResult?.statusText }}</el-tag>
-      </el-descriptions-item>
+      <el-descriptions-item label="上传时间">{{ currentResult?.uploadTime || '-' }}</el-descriptions-item>
     </el-descriptions>
-
-    <el-table :data="detailRecords" border stripe>
-      <el-table-column type="index" label="#" width="60" />
-      <el-table-column prop="indicatorName" label="评价指标" min-width="150" />
-      <el-table-column prop="aiScore" label="AI评分" width="100">
-        <template #default="{ row }">
-          <span v-if="row.aiScore" style="color: #67c23a; font-weight: bold;">{{ row.aiScore }}</span>
-          <span v-else style="color: #999;">-</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="teacherScore" label="教师评分" width="100">
-        <template #default="{ row }">
-          <span v-if="row.teacherScore" style="color: #e6a23c; font-weight: bold;">{{ row.teacherScore }}</span>
-          <span v-else style="color: #999;">-</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="finalScore" label="最终得分" width="100">
-        <template #default="{ row }">
-          <span v-if="row.finalScore" style="color: #409eff; font-weight: bold;">{{ row.finalScore }}</span>
-          <span v-else style="color: #999;">-</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="AI评语" width="120" align="center">
-        <template #default="{ row }">
-          <el-button v-if="row.aiComment" size="small" type="primary" text @click="viewComment('AI评语', row.aiComment)">查看评语</el-button>
-          <span v-else style="color: #999;">-</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="教师评语" width="120" align="center">
-        <template #default="{ row }">
-          <el-button v-if="row.teacherComment" size="small" type="warning" text @click="viewComment('教师评语', row.teacherComment)">查看评语</el-button>
-          <span v-else style="color: #999;">-</span>
-        </template>
-      </el-table-column>
-    </el-table>
+    <el-divider>各指标评价详情</el-divider>
+    <div v-if="parsedReportData" style="background: #f5f7fa; padding: 20px; border-radius: 4px; max-height: 500px; overflow-y: auto">
+      <el-table :data="parsedReportData.indicators || []" border stripe>
+        <el-table-column prop="indicatorName" label="评价指标" min-width="120" />
+        <el-table-column prop="aiScore" label="AI评分" min-width="120" align="center" />
+        <el-table-column label="AI评语" min-width="120" align="center">
+          <template #default="{ row }">
+            <el-button v-if="row.aiComment" size="small" type="primary" text @click="viewComment('AI评语', row.aiComment)">查看评语</el-button>
+            <span v-else style="color: #999;">-</span>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-divider v-if="currentReport.teacherScore">教师总体评价</el-divider>
+      <el-descriptions v-if="currentReport.teacherScore" :column="2" border style="margin-top: 10px">
+        <el-descriptions-item label="教师评分">
+          <el-tag :type="currentReport.teacherScore >= 80 ? 'success' : currentReport.teacherScore >= 60 ? 'warning' : 'danger'" size="large">
+            {{ Number(currentReport.teacherScore).toFixed(1) }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="AI/教师占比">
+          AI {{ ((1 - (currentReport.teacherScoreRatio ?? 0.5)) * 10).toFixed(0) }} : 教师 {{ ((currentReport.teacherScoreRatio ?? 0.5) * 10).toFixed(0) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="教师评语" :span="2">
+          {{ currentReport.teacherComment || '暂无评语' }}
+        </el-descriptions-item>
+      </el-descriptions>
+    </div>
+    <el-empty v-else description="暂无评价数据" />
+    <template #footer>
+      <el-button @click="detailVisible = false">关闭</el-button>
+    </template>
   </el-dialog>
 
   <!-- 评语详情对话框 -->
@@ -138,13 +133,19 @@ import { Folder, Reading } from '@element-plus/icons-vue'
 const userStore = useUserStore()
 const results = ref([])  // 所有成果
 const reports = ref([])  // 所有报告
-const detailRecords = ref([])
 const detailVisible = ref(false)
 const currentResult = ref(null)
+const currentReport = ref({})  // 报告详情数据
 const expandedCourses = ref([])  // 展开的课程列表
-const commentVisible = ref(false)  // 评语弹窗
-const commentTitle = ref('')       // 评语标题
-const commentContent = ref('')     // 评语内容
+const commentVisible = ref(false)
+const commentTitle = ref('')
+const commentContent = ref('')
+
+// 解析报告中的指标数据（与教师端一致）
+const parsedReportData = computed(() => {
+  if (!currentReport.value.reportData) return null
+  try { return JSON.parse(currentReport.value.reportData) } catch { return null }
+})
 
 // 按课程→任务分组的数据
 const courseScores = computed(() => {
@@ -258,27 +259,20 @@ const loadScores = async () => {
   }
 }
 
-// 查看详情
+// 查看详情（从报告接口获取数据，与教师端格式一致）
 const viewDetail = async (result) => {
-  if (!result.id) {
-    ElMessage.error('成果信息不完整')
+  if (!result.reportId) {
+    ElMessage.warning('该作业暂无评价报告')
     return
   }
-  
+  currentResult.value = result
   try {
-    const res = await request.get(`/evaluate/records/${result.id}`)
-    detailRecords.value = res.data || []
-    currentResult.value = result
-    
-    if (detailRecords.value.length === 0) {
-      ElMessage.warning('该作业暂无评价记录')
-      return
-    }
-    
+    const res = await request.get(`/report/${result.reportId}`)
+    currentReport.value = res.data || {}
     detailVisible.value = true
   } catch (e) {
-    console.error('查看详情失败:', e)
-    ElMessage.error('加载详情失败')
+    console.error('加载详情失败:', e)
+    ElMessage.error('加载评价详情失败')
   }
 }
 

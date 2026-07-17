@@ -30,6 +30,13 @@
         WHERE student_id = #{studentId}
     </select>
 
+    <!-- 学生待评价成果数 -->
+    <select id="countStudentPendingResults" resultType="int">
+        SELECT COUNT(*)
+        FROM training_result
+        WHERE student_id = #{studentId} AND status = 0
+    </select>
+
     <!-- 学生学习天数（从首次提交到现在的天数） -->
     <select id="getStudentStudyDays" resultType="int">
         SELECT DATEDIFF(NOW(), MIN(upload_time)) + 1
@@ -206,6 +213,11 @@
     <!-- 课程总数 -->
     <select id="countAllCourses" resultType="int">
         SELECT COUNT(*) FROM course WHERE status = 1
+    </select>
+
+    <!-- 实训任务总数 -->
+    <select id="countAllTasks" resultType="int">
+        SELECT COUNT(*) FROM training_task
     </select>
 
     <!-- 待评价成果数 -->

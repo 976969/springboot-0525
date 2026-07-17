@@ -130,11 +130,19 @@ public class EvaluateController {
             }
         }
 
-        // 只有全部成功时才更新状态为已AI评分，部分成功则更新为已AI评分(部分)
-        if (failCount == 0) {
-            resultService.updateStatus(resultId, 2); // 已AI评分（全部指标成功）
-        } else if (successCount > 0) {
-            resultService.updateStatus(resultId, 1); // 已AI评分（部分指标成功）
+        // AI评分完成后统一更新状态为已处理（status=1）
+        if (successCount > 0) {
+            resultService.updateStatus(resultId, 1); // 已处理
+            // 将已有的报告重置为草稿，使项目回到报表中心顶部列表
+            List<EvaluationReport> existingReports = reportMapper.selectByTaskAndStudent(result.getTaskId(), result.getStudentId());
+            if (existingReports != null) {
+                for (EvaluationReport report : existingReports) {
+                    if (report.getStatus() != null && report.getStatus() == 1) {
+                        report.setStatus(0);
+                        reportMapper.updateById(report);
+                    }
+                }
+            }
         }
 
         Map<String, Object> resultMap = new HashMap<>();

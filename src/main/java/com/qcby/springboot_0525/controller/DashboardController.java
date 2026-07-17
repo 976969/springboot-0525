@@ -46,7 +46,7 @@ public class DashboardController {
         stats.put("courseCount", dashboardMapper.countStudentCourses(studentId));
         stats.put("completedTaskCount", dashboardMapper.countStudentCompletedTasks(studentId));
         stats.put("averageScore", dashboardMapper.getStudentAverageScore(studentId));
-        stats.put("certificateCount", dashboardMapper.countStudentReports(studentId));
+        stats.put("pendingResults", dashboardMapper.countStudentPendingResults(studentId));
 
         return Result.success(stats);
     }
@@ -189,6 +189,7 @@ public class DashboardController {
         stats.put("studentCount", dashboardMapper.countAllStudents());
         stats.put("teacherCount", dashboardMapper.countAllTeachers());
         stats.put("courseCount", dashboardMapper.countAllCourses());
+        stats.put("taskCount", dashboardMapper.countAllTasks());
         stats.put("pendingResults", dashboardMapper.countPendingResults());
         return Result.success(stats);
     }

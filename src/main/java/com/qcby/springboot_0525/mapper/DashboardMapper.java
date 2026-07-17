@@ -26,6 +26,9 @@ public interface DashboardMapper {
     /** 学生获得评价报告数（视为证书/成果认证） */
     int countStudentReports(@Param("studentId") Long studentId);
 
+    /** 学生待评价成果数（status=0） */
+    int countStudentPendingResults(@Param("studentId") Long studentId);
+
     /** 学生最近学习天数（从首次提交到现在的天数） */
     int getStudentStudyDays(@Param("studentId") Long studentId);
 
@@ -71,6 +74,9 @@ public interface DashboardMapper {
 
     /** 课程总数 */
     int countAllCourses();
+
+    /** 实训任务总数 */
+    int countAllTasks();
 
     /** 待评价成果数（status=0） */
     int countPendingResults();

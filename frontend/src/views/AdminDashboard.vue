@@ -20,7 +20,7 @@
     <!-- 核心统计卡片 -->
     <el-row :gutter="20" style="margin-top: 20px">
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card" @click="$router.push('/user-manage')">
+        <el-card shadow="hover" class="stat-card">
           <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
             <el-icon :size="32"><User /></el-icon>
           </div>
@@ -31,7 +31,7 @@
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card" @click="$router.push('/user-manage')">
+        <el-card shadow="hover" class="stat-card">
           <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">
             <el-icon :size="32"><Avatar /></el-icon>
           </div>
@@ -42,7 +42,7 @@
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card" @click="$router.push('/course')">
+        <el-card shadow="hover" class="stat-card">
           <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)">
             <el-icon :size="32"><Reading /></el-icon>
           </div>
@@ -53,13 +53,13 @@
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card" @click="$router.push('/task')">
+        <el-card shadow="hover" class="stat-card stat-card--warn">
           <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%)">
             <el-icon :size="32"><Clock /></el-icon>
           </div>
           <div class="stat-info">
-            <div class="stat-value">{{ stats.taskCount || 0 }}</div>
-            <div class="stat-label">实训任务</div>
+            <div class="stat-value text-warn">{{ stats.pendingResults || 0 }}</div>
+            <div class="stat-label">待评价成果</div>
           </div>
         </el-card>
       </el-col>
@@ -281,10 +281,10 @@ const initCharts = async () => {
       const counts = res.data?.counts || []
       scoreChart = echarts.init(scoreChartRef.value)
       scoreChart.setOption({
-        tooltip: { trigger: 'axis', formatter: '{b}<br/>{c}人' },
+        tooltip: { trigger: 'axis', formatter: '{b}<br/>{c}份' },
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: { type: 'category', data: ranges, axisLabel: { interval: 0, rotate: 20 } },
-        yAxis: { type: 'value', name: '人数' },
+        yAxis: { type: 'value', name: '作业数' },
         series: [{
           type: 'bar',
           data: counts,
@@ -338,7 +338,7 @@ onBeforeUnmount(() => {
 .time-text { font-size: 32px; font-weight: 300; color: rgba(255,255,255,0.95); font-variant-numeric: tabular-nums; }
 .date-text { font-size: 14px; color: rgba(255,255,255,0.6); margin-top: 4px; }
 
-.stat-card { text-align: center; border-radius: 12px; transition: all 0.3s; cursor: pointer; }
+.stat-card { text-align: center; border-radius: 12px; transition: all 0.3s; }
 .stat-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
 .stat-card--warn { position: relative; }
 .stat-card--warn::after {

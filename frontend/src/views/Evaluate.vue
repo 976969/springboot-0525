@@ -236,8 +236,7 @@
           </el-select>
           <el-select v-model="filterStatus" placeholder="选择状态" clearable style="width: 150px" @change="loadResults">
             <el-option label="待处理" :value="0" />
-            <el-option label="已AI评分" :value="1" />
-            <el-option label="已AI评分(全部)" :value="2" />
+            <el-option label="已处理" :value="1" />
           </el-select>
           <el-button type="primary" @click="resetFilter">重置筛选</el-button>
           <div style="flex-grow: 1"></div>
@@ -253,8 +252,7 @@
           <el-table-column prop="status" label="状态" width="120" align="center">
             <template #default="{ row }">
               <el-tag v-if="row.status === 0" type="info" size="small">待处理</el-tag>
-              <el-tag v-else-if="row.status === 1" type="warning" size="small">已AI评分(部分)</el-tag>
-              <el-tag v-else-if="row.status === 2" type="success" size="small">已AI评分</el-tag>
+              <el-tag v-else type="success" size="small">已处理</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="createTime" label="提交时间" width="160" sortable />
@@ -302,9 +300,10 @@
             <template #default="{ row }">{{ row.avgAiScore ? row.avgAiScore.toFixed(1) : '-' }}</template>
           </el-table-column>
           <el-table-column prop="evalTime" label="评价时间" width="160" sortable="custom" />
-          <el-table-column label="操作" width="120" align="center">
+          <el-table-column label="操作" width="200" align="center">
             <template #default="{ row }">
               <el-button size="small" type="primary" @click="viewEvaluateDetail(row)" style="margin-left: 0">查看详情</el-button>
+              <el-button size="small" type="warning" @click="reEvaluate(row)" :loading="reEvaluatingIds.has(row.resultId)">重新评分</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -619,6 +618,8 @@ const currentResult = ref({})
 const contentTitle = ref('')
 const loading = ref(false)
 const loadingResults = ref(false)
+// 重新评分加载状态（记录正在重新评分的resultId）
+const reEvaluatingIds = ref(new Set())
 // 成果列表分页
 const resultPageNum = ref(1)
 const resultPageSize = ref(10)
@@ -718,9 +719,12 @@ const loadResults = async () => {
         status: filterStatus.value !== null ? filterStatus.value : undefined,
         fileName: searchText.value || undefined }
     })
-    resultList.value = (res.data.list || []).map(item => ({ ...item, evaluating: false }))
+    console.log('loadResults API返回:', res)
+    const list = res.data?.list || []
+    console.log('成果列表数据:', list.map(item => ({ id: item.id, fileName: item.fileName, status: item.status })))
+    resultList.value = list.map(item => ({ ...item, evaluating: false }))
       .sort((a, b) => (a.status ?? 99) - (b.status ?? 99))
-    resultTotal.value = res.data.total || 0
+    resultTotal.value = res.data?.total || 0
   } catch (e) { console.error('加载成果列表失败:', e) }
   finally { loadingResults.value = false }
 }
@@ -795,7 +799,7 @@ const loadEvaluations = async () => {
 
 const runEvaluateDirect = async (row) => {
   if (!row.id) { ElMessage.warning('成果ID不存在'); return }
-  if (row.status === 2) {
+  if (row.status === 1) {
     try {
       await ElMessageBox.confirm('该文件已评价，确定要再次评分吗？这将覆盖之前的评价记录。', '确认操作',
         { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
@@ -804,11 +808,54 @@ const runEvaluateDirect = async (row) => {
   row.evaluating = true
   try {
     ElMessage.info('正在进行AI自动评分，请稍候（约需10-30秒）...')
-    await request.post(`/evaluate/ai/${row.id}`)
-    ElMessage.success('AI评分完成！')
-    await loadEvaluations(); await loadResults()
-  } catch (e) { ElMessage.error('评分失败：' + (e.response?.data?.msg || e.message)) }
-  finally { row.evaluating = false }
+    const res = await request.post(`/evaluate/ai/${row.id}`)
+    console.log('AI评分返回:', res)
+    const data = res.data || {}
+    const successCount = data.successCount || 0
+    const failCount = data.failCount || 0
+    if (successCount > 0) {
+      ElMessage.success(`AI评分完成！成功 ${successCount} 个指标${failCount > 0 ? '，失败 ' + failCount + ' 个' : ''}`)
+      // 刷新数据
+      try { await loadEvaluations() } catch (e) { console.error('刷新评价记录失败:', e) }
+      try { await loadResults() } catch (e) { console.error('刷新成果列表失败:', e) }
+    } else {
+      ElMessage.error(`AI评分失败：所有指标评分均未成功。${data.failMessages ? '\n' + data.failMessages.join('\n') : ''}`)
+    }
+  } catch (e) {
+    console.error('AI评分请求失败:', e)
+    ElMessage.error('评分失败：' + (e.response?.data?.message || e.message))
+  } finally {
+    row.evaluating = false
+  }
+}
+
+// 重新评分（AI评分记录区域）
+const reEvaluate = async (row) => {
+  if (!row.resultId) { ElMessage.warning('成果ID不存在'); return }
+  try {
+    await ElMessageBox.confirm('确定要对该成果重新进行AI评分吗？新的评分将覆盖原有记录并同步到报表中心。', '确认重新评分',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
+  } catch { return }
+  reEvaluatingIds.value.add(row.resultId)
+  try {
+    ElMessage.info('正在重新进行AI自动评分，请稍候（约需10-30秒）...')
+    const res = await request.post(`/evaluate/ai/${row.resultId}`)
+    const data = res.data || {}
+    const successCount = data.successCount || 0
+    const failCount = data.failCount || 0
+    if (successCount > 0) {
+      ElMessage.success(`重新评分完成！成功 ${successCount} 个指标${failCount > 0 ? '，失败 ' + failCount + ' 个' : ''}`)
+      try { await loadEvaluations() } catch (e) { console.error('刷新评价记录失败:', e) }
+      try { await loadResults() } catch (e) { console.error('刷新成果列表失败:', e) }
+    } else {
+      ElMessage.error(`重新评分失败：所有指标评分均未成功。${data.failMessages ? '\n' + data.failMessages.join('\n') : ''}`)
+    }
+  } catch (e) {
+    console.error('重新评分请求失败:', e)
+    ElMessage.error('重新评分失败：' + (e.response?.data?.message || e.message))
+  } finally {
+    reEvaluatingIds.value.delete(row.resultId)
+  }
 }
 
 // 管理员仪表盘自动刷新定时器（每30秒）

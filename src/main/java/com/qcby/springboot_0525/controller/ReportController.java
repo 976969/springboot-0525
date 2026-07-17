@@ -89,6 +89,11 @@ public class ReportController {
         }
         
         EvaluationReport report = reportService.generateReport(result.getId());
+        // 发布报告（学生端可见）
+        if (report.getStatus() == null || report.getStatus() == 0) {
+            report.setStatus(1);
+            reportMapper.updateById(report);
+        }
         return Result.success("报告已生成并提交给学生", report);
     }
 
@@ -201,6 +206,9 @@ public class ReportController {
 
     /**
      * 教师对报告进行整体评分并设置AI/教师评分占比
+     * 支持两种模式：
+     * 1. 传入 reportId → 更新已有报告
+     * 2. 传入 taskId + studentId → 自动创建报告并评分
      */
     @PutMapping("/teacher-score")
     public Result<Void> teacherScore(@RequestBody Map<String, Object> params) {
@@ -209,19 +217,42 @@ public class ReportController {
             throw new BusinessException(403, "仅教师可评分");
         }
         
-        Long reportId = Long.valueOf(params.get("reportId").toString());
         BigDecimal teacherScore = new BigDecimal(params.get("teacherScore").toString());
         BigDecimal ratio = new BigDecimal(params.get("ratio").toString()); // AI占比 0-1
+        Long teacherId = Long.valueOf(StpUtil.getSession().get("realId").toString());
         
-        EvaluationReport report = reportMapper.selectById(reportId);
-        if (report == null) {
-            throw new BusinessException("报告不存在");
+        EvaluationReport report;
+        
+        // 模式1：已有报告ID，直接更新
+        if (params.get("reportId") != null && !params.get("reportId").toString().isEmpty()) {
+            Long reportId = Long.valueOf(params.get("reportId").toString());
+            report = reportMapper.selectById(reportId);
+            if (report == null) {
+                throw new BusinessException("报告不存在");
+            }
+        } else {
+            // 模式2：无报告ID，根据 taskId + studentId 自动创建报告
+            Long taskId = params.get("taskId") != null ? Long.valueOf(params.get("taskId").toString()) : null;
+            Long studentId = params.get("studentId") != null ? Long.valueOf(params.get("studentId").toString()) : null;
+            if (taskId == null || studentId == null) {
+                throw new BusinessException("缺少报告ID或任务/学生信息");
+            }
+            // 检查是否已有报告
+            List<EvaluationReport> existingReports = reportMapper.selectByTaskAndStudent(taskId, studentId);
+            if (existingReports != null && !existingReports.isEmpty()) {
+                report = existingReports.get(0);
+            } else {
+                // 自动创建报告（从评价记录计算AI总分）
+                report = reportService.generateReportByTaskAndStudent(taskId, studentId);
+            }
         }
         
-        Long teacherId = Long.valueOf(StpUtil.getSession().get("realId").toString());
         report.setTeacherScore(teacherScore);
         report.setTeacherScoreRatio(ratio);
         report.setTeacherId(teacherId);
+        if (params.get("teacherComment") != null) {
+            report.setTeacherComment(params.get("teacherComment").toString());
+        }
         reportMapper.updateById(report);
         
         return Result.success();
@@ -269,6 +300,15 @@ public class ReportController {
     public Result<List<EvaluationReport>> listAll() {
         return Result.success(reportMapper.selectList());
     }
+
+    /**
+     * 获取所有报告（含草稿），用于报表中心顶部列表关联教师评分
+     */
+    @SaCheckLogin
+    @GetMapping("/all")
+    public Result<List<EvaluationReport>> listAllIncludingDraft() {
+        return Result.success(reportMapper.selectAll());
+    }
     
     /**
      * 根据成果ID获取报告（用于报表中心显示教师评分和最终分数）
@@ -308,6 +348,94 @@ public class ReportController {
         }
         
         return Result.success(data);
+    }
+
+    /**
+     * 重新计算评分：根据最新评价记录重算总分和最终分
+     */
+    @SaCheckRole("teacher")
+    @PutMapping("/recalculate/{id}")
+    public Result<Void> recalculateScore(@PathVariable Long id) {
+        EvaluationReport report = reportMapper.selectById(id);
+        if (report == null) {
+            throw new BusinessException("报告不存在");
+        }
+
+        // 通过 taskId + studentId 找到对应的 training_result
+        TrainingResult result = resultMapper.selectByTaskAndStudent(report.getTaskId(), report.getStudentId());
+        if (result == null) {
+            throw new BusinessException("未找到对应的实训成果");
+        }
+
+        // 获取最新评价记录
+        List<EvaluationRecord> records = recordMapper.selectByResultId(result.getId());
+        if (records == null || records.isEmpty()) {
+            throw new BusinessException("该成果暂无评价记录");
+        }
+
+        // 重算总分（取最终得分的平均值）
+        BigDecimal sum = BigDecimal.ZERO;
+        int count = 0;
+        for (EvaluationRecord record : records) {
+            BigDecimal score = record.getFinalScore() != null ? record.getFinalScore()
+                    : record.getAiScore() != null ? record.getAiScore() : BigDecimal.ZERO;
+            sum = sum.add(score);
+            count++;
+        }
+        BigDecimal newTotalScore = count > 0 ? sum.divide(BigDecimal.valueOf(count), 2, BigDecimal.ROUND_HALF_UP) : BigDecimal.ZERO;
+        report.setTotalScore(newTotalScore);
+
+        // 重算最终分
+        if (report.getTeacherScore() != null && report.getTeacherScoreRatio() != null) {
+            BigDecimal aiRatio = report.getTeacherScoreRatio();
+            BigDecimal teacherRatio = BigDecimal.ONE.subtract(aiRatio);
+            BigDecimal finalScore = newTotalScore.multiply(aiRatio)
+                    .add(report.getTeacherScore().multiply(teacherRatio));
+            report.setTotalScore(finalScore.setScale(2, BigDecimal.ROUND_HALF_UP));
+        }
+
+        reportMapper.updateById(report);
+        return Result.success();
+    }
+
+    /**
+     * 退回（重置为未评分状态，删除评价记录和报告）
+     */
+    @SaCheckRole("teacher")
+    @PutMapping("/reject/{resultId}")
+    public Result<Void> reject(@PathVariable Long resultId) {
+        TrainingResult result = resultMapper.selectById(resultId);
+        if (result == null) {
+            throw new BusinessException("成果不存在");
+        }
+        // 1. 重置成果状态为待处理
+        result.setStatus(0);
+        resultMapper.updateById(result);
+        // 2. 删除该成果的所有评价记录
+        recordMapper.deleteByResultId(resultId);
+        // 3. 删除该成果的所有报告（草稿+已发布）
+        List<EvaluationReport> reports = reportMapper.selectByTaskAndStudent(result.getTaskId(), result.getStudentId());
+        if (reports != null) {
+            for (EvaluationReport report : reports) {
+                reportMapper.deleteById(report.getId());
+            }
+        }
+        return Result.success();
+    }
+
+    /**
+     * 恢复报告（改为草稿状态，保留教师评分和评语）
+     */
+    @SaCheckRole("teacher")
+    @PutMapping("/{id}/restore")
+    public Result<Void> restore(@PathVariable Long id) {
+        EvaluationReport report = reportMapper.selectById(id);
+        if (report == null) {
+            throw new BusinessException("报告不存在");
+        }
+        report.setStatus(0);
+        reportMapper.updateById(report);
+        return Result.success();
     }
 
     /**

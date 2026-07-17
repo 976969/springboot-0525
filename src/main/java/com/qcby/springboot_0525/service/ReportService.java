@@ -73,16 +73,32 @@ public class ReportService {
             reportMapper.updateById(existingReport);
             return existingReport;
         } else {
-            // 创建新报告
+            // 创建新报告（草稿状态，教师点击"生成报告"后才发布）
             EvaluationReport report = new EvaluationReport();
             report.setTaskId(result.getTaskId());
             report.setStudentId(result.getStudentId());
             report.setTotalScore(totalScore);
+            report.setTeacherScoreRatio(new BigDecimal("0.5")); // 默认 AI/教师 各占 50%
             report.setReportData(reportData);
+            report.setStatus(0); // 草稿
             report.setCreateTime(new Date());
             reportMapper.insert(report);
             return report;
         }
+    }
+
+    /**
+     * 根据 taskId + studentId 自动创建报告（用于教师评分时自动创建）
+     */
+    @Transactional
+    public EvaluationReport generateReportByTaskAndStudent(Long taskId, Long studentId) {
+        // 1. 找到对应的实训成果
+        TrainingResult result = resultMapper.selectByTaskAndStudent(taskId, studentId);
+        if (result == null) {
+            throw new BusinessException("未找到对应的实训成果");
+        }
+        // 复用 generateReport 逻辑
+        return generateReport(result.getId());
     }
 
     /**
